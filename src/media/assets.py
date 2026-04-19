@@ -11,6 +11,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+from pydub import AudioSegment
 from dotenv import load_dotenv
 
 _old_getaddrinfo = socket.getaddrinfo
@@ -103,6 +104,26 @@ def sync_drive_to_s3(folder_id, num_clips, media_type="video"):
         content_type = "audio/mpeg"
         s3_prefix = "audio/aud_"
 
+    # If it's a BGM or long audio, we trim it to a reasonable length (e.g., 5 mins max)
+    # to prevent Lambda memory issues and download timeouts.
+    def _trim_audio_if_needed(fh, name):
+        try:
+            fh.seek(0)
+            audio = AudioSegment.from_file(fh)
+            # If longer than 5 minutes, trim it. 
+            # Most shorts are < 2 mins, so 5 mins (300,000ms) is plenty of buffer.
+            if len(audio) > 300000:
+                print(f"    Trimming long audio {name} ({len(audio)/1000:.1f}s) to 300s...")
+                trimmed = audio[:300000]
+                out = io.BytesIO()
+                trimmed.export(out, format="mp3")
+                out.seek(0)
+                return out
+        except Exception as e:
+            print(f"    Audio trim warning: {e}")
+        fh.seek(0)
+        return fh
+
     items = []
     for attempt in range(4):
         try:
@@ -174,6 +195,9 @@ def sync_drive_to_s3(folder_id, num_clips, media_type="video"):
                 time.sleep(2 ** attempt)
 
         fh.seek(0)
+        if media_type == "audio":
+            fh = _trim_audio_if_needed(fh, item["name"])
+        
         print(f"    Uploading to S3 cloud storage...")
         key = f"{s3_prefix}{uuid.uuid4().hex}"
         s3.upload_fileobj(fh, BUCKET_NAME, key, ExtraArgs={"ContentType": content_type})

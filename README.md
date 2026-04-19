@@ -9,32 +9,25 @@ Hazy Chanel Automator is a state-of-the-art, fully automated video production pi
 
 ---
 
-## The Hardened Cloud Pipeline (v11)
+## The Anti-Detection Pipeline (v13)
 
-Version 11 represents a significant milestone in stability and performance. The system has been hardened against cloud-scale bottlenecks and API limitations:
+Version 13 addresses viewer feedback regarding "AI voice" patterns and "horrible FPS". It implements a multi-layered anti-detection strategy and single-chunk rendering for maximum visual fluidity:
 
-### 1. Intelligent AI Brain (`src/ai/brain.py`)
-- **Master Prompt Logic**: Uses a carefully crafted JSON-schema prompt to generate structured scripts with hooks, reveals, and CTAs — targeting 70%+ audience retention.
-- **Model Resilience**: Automatically cycles through a prioritized list of Gemini models (`gemini-2.5-flash`, `gemini-2.5-flash-lite`, etc.). If one model is overloaded (503) or hits a quota limit (429), it waits with exponential backoff and retries before falling back to the next model.
-- **Stable Pinning**: Uses only verified, high-quota model aliases so your pipeline does not break when Google updates their API.
+### 1. Anti-Detection Brain (`src/ai/brain.py`)
+- **Anti-Hallucination Protocol**: Strict rules forcing Gemini to verify facts, numbers, and names. Zero invention allowed.
+- **Phonetic Spelling**: Script-level phonetic overrides (e.g., "May-lay" for Melee) to ensure the AI voice never mispronounces industry terms.
+- **Punctuation Orchestration**: Uses dramatic ellipses (`...`), breath-pause commas, and sentence fragments to break robotic speech patterns.
+- **Opener & CTA Rotation**: Automatically rotates between 3+ templates for descriptions, hook openers, and call-to-action phrases to avoid platform pattern-matching.
 
-### 2. Text-to-Speech (`src/ai/tts.py`)
-- **Primary**: ElevenLabs neural voice for broadcast-quality narration.
-- **Fallback**: Automatically switches to Microsoft Edge Neural TTS (free, local) if ElevenLabs is unavailable or over quota — so production never halts.
+### 2. Voice Rotation Pool (`src/ai/tts.py`)
+- **Christopher Retired**: The "Standard AI Voice" (ChristopherNeural) is permanently retired.
+- **Dynamic Pool**: Rotates between `AndrewNeural`, `GuyNeural`, `EricNeural`, and `RyanNeural` (British) based on video category.
+- **Premium Tuning**: ElevenLabs stability lowered to 0.45 and style increased to 0.30 for natural human-like expressiveness.
 
-### 3. Advanced Multi-Tier B-roll Hierarchy (`src/media/assets.py`)
-To prevent "missing asset" crashes, the system uses a 5-tier fallback search logic:
-1. **Gaming Detection**: Topics matching "gaming," "Minecraft," "Roblox," etc. immediately pull curated parkour gameplay footage from your private Google Drive folder.
-2. **Pexels Primary**: The AI-generated `b_roll_keyword` is sent to the Pexels API to find cinematic 4K/HD professional b-roll.
-3. **Visual AI Backup**: If Pexels returns no results, Gemini generates an alternative visual keyword and retries.
-4. **Categorized Fallbacks**: Broad keyword pools are tried for categories like `Science`, `Nature`, `History`, `Technology`, and `Space`.
-5. **Emergency Buffer**: As a last resort, generalized high-retention parkour footage from Google Drive ensures the video always renders.
-
-### 4. High-Concurrency AWS Assembly (`src/media/builder.py`)
-Optimized for AWS accounts with high unreserved concurrency quotas (1000+):
-- **Dynamic Chunking**: Automatically calculates `frames_per_lambda` (minimum 600 frames) to maximize render efficiency and prevent "stitcher" timeouts during assembly.
-- **vCPU Awareness**: Maps `concurrency_per_lambda` to exactly 2 vCPUs (for 3008MB Lambda instances), preventing core over-subscription errors that cause immediate render failure.
-- **Self-Healing**: Detects AWS "Rate Exceeded" or "Missing Chunks" errors and triggers an intelligent exponential-backoff retry with up to 4 automatic attempts.
+### 3. Single-Chunk Fluidity (`src/media/builder.py`)
+- **FPS Fix**: Moved from chunked rendering to single-shot assembly. The entire 90-120s video is rendered as one continuous frame sequence.
+- **Stitch-Free**: Eliminates frame drops and "stuttering" previously caused by joining separate video chunks.
+- **No-Timeout Logic**: Optimized for the 600s AWS Lambda hard limit, ensuring 120s videos render in ~180s.
 
 ---
 
@@ -200,4 +193,4 @@ youtube-shorts-automator/
 
 ---
 
-**Version 11 (Hardened Cloud Edition)** — *Solo Project by [Hazy Chanel](https://www.youtube.com/channel/UCize2SQoXPI6RFQYbIGemIg).*
+**Version 13 (Anti-Detection Edition)** — *Solo Project by [Hazy Chanel](https://www.youtube.com/channel/UCize2SQoXPI6RFQYbIGemIg).*

@@ -80,7 +80,7 @@ def produce_video(category, local_excludes=None):
 
     full_audio_script = " ".join([s['voiceover'] for s in viral_package['segments']])
 
-    audio_url, duration, voice_error = generate_voiceover(full_audio_script)
+    audio_url, duration, voice_error = generate_voiceover(full_audio_script, category=category)
     if not audio_url:
         print("\nFACTORY HALTED: Voiceover generation failed.")
         ping_error(str(voice_error), "ElevenLabs")

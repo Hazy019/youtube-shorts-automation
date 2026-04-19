@@ -144,9 +144,12 @@ def make_cloud_video(
     if total_frames < 150:
         return None, f"Video too short: {total_frames} frames (min 150)"
 
-    frames_per_lambda = 300
+    # SAFETY CHUNKING (v13.3): 
+    # Your 3GB Lambda is rendering at ~1.5 FPS. 900f (30s) was still timing out.
+    # 600f (20s) takes ~400s to render, which fits safely within your 600s limit.
+    frames_per_lambda = min(total_frames, 600)
     chunk_count = math.ceil(total_frames / frames_per_lambda)
-    print(f"  Render plan: {total_frames} frames → {chunk_count} chunks of {frames_per_lambda}f (Proven Safe Mode)", flush=True)
+    print(f"  Render plan: {total_frames} frames → {chunk_count} chunk(s) of {frames_per_lambda}f (Safety Chunking v13.3-ENFORCED)", flush=True)
 
     bgm_volume = 0.10 if category == "gaming" else 0.07
 
@@ -201,14 +204,12 @@ def make_cloud_video(
 
             if _is_stitcher_timeout(error_data):
                 if attempt < RENDER_RETRIES:
-                    # Stitcher timeout can be transient (AWS throttling delayed
-                    # some chunks, stitcher ran out of time). Always worth retrying
-                    # with our 300f/chunk config — chunks are fast enough.
-                    print("  Stitcher timeout — will retry (chunks are small, likely AWS throttle delay)", flush=True)
+                    # Stitcher timeout in single-chunk mode means the render is too slow for the 600s Lambda limit.
+                    print("  Render timeout (Single-Chunk v13) — will retry. Likely heavy assets or long duration.", flush=True)
                     continue
                 err = (
-                    "Stitcher timeout after all retries. AWS may be under heavy load. "
-                    "Check CloudWatch for chunk render durations."
+                    "Lambda Timeout (600s) after all retries. The video is too complex or long for a single-chunk render on this function. "
+                    "ACTION: Use a shorter BGM, reduce video length, or increase Lambda Timeout to 900s in AWS Console."
                 )
                 print(f"\n  {err}", flush=True)
                 return None, err

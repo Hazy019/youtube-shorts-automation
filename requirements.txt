@@ -1,3 +1,4 @@
+# Hazy Chanel Automator — Requirements v13 (Anti-Detection Edition)
 google-genai==1.70.0
 supabase==2.28.3
 python-dotenv==1.0.1
