@@ -13,20 +13,20 @@ load_dotenv()
 # (Hazy-chanel-bot project, April 2026 screenshot)
 #
 # ACTIVE models on your account:
-#   gemini-3-flash        →  5 RPM,  20 RPD  (best quality)
-#   gemini-2.5-flash      →  5 RPM,  20 RPD  (great quality)
-#   gemini-2.5-flash-lite → 10 RPM,  20 RPD  (good quality)
-#   gemini-3.1-flash-lite → 15 RPM, 500 RPD  (best fallback volume)
+#   gemini-3-flash-preview        →  5 RPM,  20 RPD  (best quality)
+#   gemini-2.5-flash              →  5 RPM,  20 RPD  (great quality)
+#   gemini-2.5-flash-lite          → 10 RPM,  20 RPD  (good quality)
+#   gemini-3.1-flash-lite-preview → 15 RPM, 500 RPD  (best fallback volume)
 #
 # DEAD models on your account (limit: 0 — never call these):
 #   ✗ gemini-2.0-flash
 #   ✗ gemini-2.0-flash-lite
 # ══════════════════════════════════════════════════════════════════
 MODELS = [
-    "gemini-3-flash",          # best quality,  5 RPM,  20 RPD
-    "gemini-2.5-flash",        # great quality, 5 RPM,  20 RPD
-    "gemini-2.5-flash-lite",   # good quality, 10 RPM,  20 RPD
-    "gemini-3.1-flash-lite",   # 500 RPD — high-volume last-resort
+    "gemini-3-flash-preview",          # best quality,  5 RPM,  20 RPD
+    "gemini-2.5-flash",                # great quality, 5 RPM,  20 RPD
+    "gemini-2.5-flash-lite",           # good quality, 10 RPM,  20 RPD
+    "gemini-3.1-flash-lite-preview",   # 500 RPD — high-volume last-resort
 ]
 
 RPM_RETRIES_PER_MODEL = 3   # max waits on RPM before moving to next model
@@ -290,9 +290,11 @@ R2.  No emojis anywhere in the JSON.
 R3.  description: 400+ words. Conversational opener first, then SEO. 3+ hashtags.
      ROTATE openers every video — never use the same opener twice.
 R4.  tags: exactly 15 lowercase strings. At least 4 must be colloquial.
-R5.  segments: 5 to 7 total. Each segment.end must exactly equal next segment.start.
-R6.  Total voiceover duration targets EXACTLY 58-59 seconds at 2.5 words per second.
-     Count words per segment: words ÷ 2.5 = seconds. Match start/end timing exactly.
+R5.  segments: EXACTLY 5 to 7 total. (Rejection if less than 5).
+R6.  TOTAL WORD COUNT LIMIT: 130 to 140 words total across all segments.
+     Duration calculation: Each ellipsis "..." adds 0.6s of silence. 
+     Your target is EXACTLY 58.5 seconds. Do not exceed 140 words.
+     Match start/end timing exactly. Each segment.end must equal next segment.start.
 R7.  text (on-screen caption): 1-3 WORDS ONLY. Never a full sentence.
 R8.  voiceover and text say DIFFERENT things. Caption = punchline/label. Voiceover = explanation.
 R9.  text_effect: "pop" = confident reveal, "glitch" = shocking fact, "typewriter" = tension.
