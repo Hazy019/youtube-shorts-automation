@@ -439,6 +439,7 @@ def generate_full_package(category, local_excludes=None):
                             "topic":  package["topic"],
                             "title":  package["title"],
                             "script": full_script,
+                            "tiktok_status": "INITIALIZED", # Prevent auto-queuing before render
                         }).execute()
                     except Exception as e:
                         print(f"  Supabase insert skipped: {e}")

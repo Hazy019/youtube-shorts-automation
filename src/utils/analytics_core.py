@@ -1,5 +1,6 @@
 import os
 import datetime
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google import genai
@@ -24,12 +25,26 @@ def get_analytics_service():
         print(err)
         ping_error(err, "Analytics Service")
         return None
+    
     creds = Credentials.from_authorized_user_file("token_youtube.json", SCOPES)
+    
     if not creds or not creds.valid:
-        err = "YouTube Token invalid/expired. Run tools/update_tokens.py and update secrets."
-        print(err)
-        ping_error(err, "Analytics Service")
-        return None
+        if creds and creds.expired and creds.refresh_token:
+            print("  Refreshing YouTube Analytics token...")
+            try:
+                creds.refresh(Request())
+                with open('token_youtube.json', 'w') as token:
+                    token.write(creds.to_json())
+            except Exception as e:
+                err = f"Failed to refresh YouTube Token: {e}. Run tools/update_tokens.py."
+                print(err)
+                ping_error(err, "Analytics Service")
+                return None
+        else:
+            err = "YouTube Token invalid/expired. Run tools/update_tokens.py and update secrets."
+            print(err)
+            ping_error(err, "Analytics Service")
+            return None
     try:
         return build("youtubeAnalytics", "v2", credentials=creds)
     except Exception as e:

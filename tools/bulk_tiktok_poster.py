@@ -10,8 +10,8 @@ from supabase import create_client, Client
 
 load_dotenv()
 
-# We can safely import Tk_uploader here
-from src.api.tiktok import upload_to_tiktok, _cleanup
+# Reverting to library-based imports
+from src.api.tiktok import upload_to_tiktok, _cleanup, _prepare_cookies, _validate_netscape
 from src.utils.discord import ping_error, ping_tiktok_success, ping_queue_completed
 
 def _get_supabase() -> Client | None:
@@ -27,7 +27,7 @@ def _get_supabase() -> Client | None:
 def download_video(url: str, output_path: str) -> bool:
     print(f"Downloading from S3: {url[:60]}...")
     try:
-        r = requests.get(url, stream=True, timeout=(10, 120))
+        r = requests.get(url, stream=True)
         r.raise_for_status()
         with open(output_path, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
@@ -39,7 +39,7 @@ def download_video(url: str, output_path: str) -> bool:
 
 def drain_tiktok_queue():
     print("="*40)
-    print("TIKTOK SUPABASE RETRY QUEUE MANAGER")
+    print("TIKTOK SUPABASE RETRY QUEUE MANAGER (LIBRARY VERSION)")
     print("="*40)
     
     db = _get_supabase()
@@ -52,13 +52,7 @@ def drain_tiktok_queue():
         resp = db.table("videos").select("Topic:topic, id, s3_video_url, tiktok_description")\
                 .eq("tiktok_status", "PENDING").execute()
     except Exception as e:
-        err_str = str(e)
-        if "42703" in err_str or "s3_video_url" in err_str:
-            print("\n[ERROR] Supabase Schema Mismatch!")
-            print("Your 'videos' table is missing the 's3_video_url' column.")
-            print("Please run the SQL command provided in the implementation plan to update your database.")
-        else:
-            print(f"Supabase query failed: {e}")
+        print(f"Supabase query failed: {e}")
         return
         
     queue = resp.data
@@ -68,91 +62,77 @@ def drain_tiktok_queue():
         
     print(f"Found {len(queue)} pending TikTok uploads in the queue.\n")
 
-    # Step 1: Batch Download
-    videos_to_upload = []
-    video_map = {} # path -> {id, topic}
-    
-    temp_dir = ".temp"
-    os.makedirs(temp_dir, exist_ok=True)
+    total_uploaded = 0
 
-    for item in queue:
+    for i, item in enumerate(queue):
         video_id = item.get("id")
         topic = item.get("Topic")
         s3_url = item.get("s3_video_url")
         desc = item.get("tiktok_description")
         
-        if not s3_url or not desc:
+        print(f"\n--- Processing {i+1}/{len(queue)}: {topic} ---")
+        if not s3_url:
+            print(f"  [SKIP] No S3 video URL found for this topic. Record may be incomplete.")
+            continue
+        if not desc:
+            print(f"  [SKIP] No TikTok description found for this topic.")
             continue
             
-        local_filename = os.path.abspath(os.path.join(temp_dir, f"queue_render_{video_id}.mp4"))
+        temp_dir = ".temp"
+        os.makedirs(temp_dir, exist_ok=True)
+        local_filename = os.path.join(temp_dir, f"queue_render_{video_id}.mp4")
         
-        if download_video(s3_url, local_filename):
-            videos_to_upload.append({
-                "path": local_filename,
-                "description": desc
-            })
-            video_map[local_filename] = {"id": video_id, "topic": topic}
-
-    if not videos_to_upload:
-        print("No videos successfully downloaded. Aborting.")
-        return
-
-    print(f"\nDownloaded {len(videos_to_upload)} videos. Starting batch upload...")
-
-    # Step 2: Batch Upload
-    try:
-        from src.api.tiktok import upload_videos, _prepare_cookies, _validate_netscape
-        
-        cookies_path = _prepare_cookies()
-        if not cookies_path or not _validate_netscape(cookies_path):
-            print("FATAL: Invalid or missing TikTok Cookies.")
-            return
-
-        print(f"Launching BATCH browser session (keep window open for all posts)...")
-        # Our new robust uploader handles popups and uses its own event loop
-        failed_videos = upload_videos(
-            videos_to_upload,
-            cookies=cookies_path,
-            headless=False, # User is local, needs to solve captchas
-        )
-        failed_paths = {v.get("path") for v in failed_videos if v.get("path")}
-
-        # Step 3: Process Results
-        total_uploaded = 0
-        for video in videos_to_upload:
-            path = video["path"]
-            info = video_map.get(path)
-            if not info: continue
+        # 1. Download
+        print(f"  ACTION: Downloading video from S3...")
+        if not download_video(s3_url, local_filename):
+            print(f"  [ERROR] Failed to download video from: {s3_url}")
+            continue
             
-            if path in failed_paths:
-                print(f"FAILED: {info['topic']} (Retaining in PENDING for manual retry)")
+        # 2. Upload
+        try:
+            from tiktok_uploader.upload import upload_video
+            
+            cookies_path = _prepare_cookies()
+            if not cookies_path or not _validate_netscape(cookies_path):
+                print("FATAL: Invalid or missing TikTok Cookies. Stop to fix cookies.")
+                break
+                
+            # Local manual mode: Headless is False so user can solve captchas
+            is_headless = False
+            print(f"Launching LOCAL browser via library...")
+            
+            # Using simple direct call since we are in a loop
+            result = upload_video(
+                local_filename,
+                description=desc,
+                cookies=cookies_path,
+                headless=is_headless,
+            )
+            
+            if isinstance(result, list) and len(result) > 0:
+                print(f"[RETRY ERROR] {result[0]}")
             else:
-                print(f"SUCCESS: {info['topic']}")
-                db.table("videos").update({"tiktok_status": "SUCCESS"}).eq("id", info["id"]).execute()
+                # 3. Mark Success
+                print(f"SUCCESS! Uploaded {topic}")
+                db.table("videos").update({"tiktok_status": "SUCCESS"}).eq("id", video_id).execute()
                 total_uploaded += 1
-                ping_tiktok_success(info["topic"])
-
-        if total_uploaded > 0:
-            ping_queue_completed(total_uploaded)
-
-    except Exception as e:
-        err_msg = f"Bulk upload flow crashed: {e}"
-        print(err_msg)
-        traceback.print_exc()
-        ping_error(err_msg, "TikTok Bulk Poster")
-    
-    finally:
-        # Cleanup
-        for video in videos_to_upload:
-            p = video["path"]
-            if os.path.exists(p):
-                try: os.remove(p)
+                ping_tiktok_success(topic)
+                
+        except Exception as e:
+            print(f"Upload flow crashed for {topic}: {e}")
+            traceback.print_exc()
+            continue # Don't stop the whole queue if one fails
+            
+        finally:
+            if os.path.exists(local_filename):
+                try: os.remove(local_filename)
                 except: pass
+                
+    if total_uploaded > 0:
+        ping_queue_completed(total_uploaded)
                 
     _cleanup()
     print("\nQueue Manager finished processing.")
-    if total_uploaded > 0:
-        ping_queue_completed(total_uploaded)
 
 if __name__ == "__main__":
     drain_tiktok_queue()
