@@ -101,39 +101,20 @@ def drain_tiktok_queue():
 
     # Step 2: Batch Upload
     try:
-        from tiktok_uploader.upload import upload_videos
-        from src.api.tiktok import _prepare_cookies, _validate_netscape
+        from src.api.tiktok import upload_videos, _prepare_cookies, _validate_netscape
         
         cookies_path = _prepare_cookies()
         if not cookies_path or not _validate_netscape(cookies_path):
             print("FATAL: Invalid or missing TikTok Cookies.")
             return
 
-        thread_result = None
-        thread_err = None
-        
-        def _run_upload():
-            nonlocal thread_result, thread_err
-            try:
-                # Returns a list of FAILED videos
-                thread_result = upload_videos(
-                    videos_to_upload,
-                    cookies=cookies_path,
-                    headless=False, # User is local, needs to solve captchas
-                )
-            except Exception as e:
-                thread_err = e
-        
         print(f"Launching BATCH browser session (keep window open for all posts)...")
-        import threading
-        t = threading.Thread(target=_run_upload)
-        t.start()
-        t.join()
-        
-        if thread_err:
-            raise thread_err
-            
-        failed_videos = thread_result or []
+        # Our new robust uploader handles popups and uses its own event loop
+        failed_videos = upload_videos(
+            videos_to_upload,
+            cookies=cookies_path,
+            headless=False, # User is local, needs to solve captchas
+        )
         failed_paths = {v.get("path") for v in failed_videos if v.get("path")}
 
         # Step 3: Process Results

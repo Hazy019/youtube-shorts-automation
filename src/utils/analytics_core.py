@@ -68,6 +68,7 @@ def run_weekly_analytics():
             continue
         print(f"Metrics for: {video['topic']} ({yt_id})")
         try:
+            # 1. Main Metrics
             result = service.reports().query(
                 ids="channel==MINE",
                 startDate=start_date,
@@ -77,13 +78,35 @@ def run_weekly_analytics():
                 filters=f"video=={yt_id}",
             ).execute()
 
+            # 2. Geographic Analysis (US specific)
+            geo_result = service.reports().query(
+                ids="channel==MINE",
+                startDate=start_date,
+                endDate=today,
+                metrics="views",
+                dimensions="country",
+                filters=f"video=={yt_id}",
+            ).execute()
+
+            us_views = 0
+            total_views = 0
+            if geo_result.get("rows"):
+                for row in geo_result["rows"]:
+                    country, views = row[0], row[1]
+                    total_views += views
+                    if country == "US":
+                        us_views = views
+
+            us_pct = (us_views / total_views * 100) if total_views > 0 else 0
+
             if result.get("rows"):
                 row = result["rows"][0]
                 avg_pct, avg_dur, views, likes = row[0], row[1], row[2], row[3]
-                print(f"  {avg_pct:.1f}% retention | {views} views | {likes} likes")
+                print(f"  {avg_pct:.1f}% retention | {us_pct:.1f}% US audience | {views} views")
                 supabase.table("videos").update({
                     "avg_view_pct": avg_pct,
                     "views_48h":    views,
+                    "us_view_pct":  us_pct  # Ensure this column exists in Supabase
                 }).eq("id", video["id"]).execute()
             else:
                 print(f"  No data yet (needs 48h).")
@@ -91,17 +114,18 @@ def run_weekly_analytics():
             print(f"  Error for {yt_id}: {e}")
 
     try:
-        top = supabase.table("videos").select("topic, views_48h, avg_view_pct") \
+        top = supabase.table("videos").select("topic, views_48h, avg_view_pct, us_view_pct") \
             .order("avg_view_pct", desc=True).limit(5).execute()
-        low = supabase.table("videos").select("topic, views_48h, avg_view_pct") \
+        low = supabase.table("videos").select("topic, views_48h, avg_view_pct, us_view_pct") \
             .order("avg_view_pct", desc=False).limit(5).execute()
 
         prompt = (
-            f"Analyze YouTube Shorts performance for Hazy Chanel.\n"
-            f"TOP PERFORMERS: {top.data}\n"
+            f"Analyze YouTube Shorts performance for Hazy Chanel (Target: US Audience).\n"
+            f"TOP PERFORMERS (by retention): {top.data}\n"
             f"LOW PERFORMERS: {low.data}\n\n"
-            "In 120 words: what hook/topic patterns drove high retention? "
-            "What to avoid? Give one concrete script change for next week."
+            "In 120 words: which topics successfully captured the US audience? "
+            "How can we adjust the 'American-English' tone and US-centric hooks to improve retention? "
+            "Give one concrete script change to hit the US algorithm harder."
         )
         resp = gemini_client.models.generate_content(
             model=ANALYTICS_MODEL,

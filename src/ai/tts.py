@@ -51,7 +51,7 @@ ELEVENLABS_VOICE_IDS = [
 EDGE_TTS_VOICES = [
     {"name": "en-US-AndrewNeural",  "rate": "+2%",  "pitch": "-2Hz"},  # warm, natural
     {"name": "en-US-GuyNeural",     "rate": "+3%",  "pitch": "-1Hz"},  # neutral, clear
-    {"name": "en-US-RyanMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},  # deliberate
+    {"name": "en-US-BrianMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},  # deliberate
     {"name": "en-GB-RyanNeural",    "rate": "+5%",  "pitch": "-2Hz"},  # British — stands out
     {"name": "en-US-EricNeural",    "rate": "+2%",  "pitch": "-1Hz"},  # calm, confident
 ]
@@ -101,6 +101,9 @@ def check_elevenlabs_quota(api_key: str) -> float:
             data = r.json()
             limit = data.get("character_limit", 1)
             return data.get("character_count", 0) / limit if limit else 1.0
+        else:
+            print(f"  ElevenLabs quota check failed (HTTP {r.status_code}). Switching to fallback.")
+            return 1.0  # Treat any error as "quota exhausted" to trigger fallback safely
     except Exception:
         pass
     return 0.0

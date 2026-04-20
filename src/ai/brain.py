@@ -163,81 +163,45 @@ def fetch_used_topics():
 # ══════════════════════════════════════════════════════════════════
 
 _JSON_SCHEMA_EXAMPLE = """{
-  "topic": "The developer who hid a working Doom clone inside Minecraft...",
+  "topic": "[DYNAMIC_TOPIC_HERE]",
   "search_keyword": "Parkour",
   "backup_keywords": ["Urban Freerunning", "City Rooftop"],
-  "title": "Doom Was Hidden Inside Minecraft This Whole Time",
-  "description": "Most people played Minecraft for years without knowing a fully playable version of Doom was hidden inside the code...",
-  "tags": ["gaming","minecraft","doom","easter egg","hidden secrets","mind blown","wtf gaming","gaming facts","game development","data mining","actually crazy","retro gaming","gaming history","shorts","unexplained"],
+  "title": "[CATCHY_VIRAL_TITLE]",
+  "description": "A long, SEO-optimized description that starts with a US-centric hook...",
+  "tags": ["shorts","us-trends","gaming","facts","mind blown","actually crazy","retro gaming","history","explained"],
   "segments": [
     {
       "start": 0.0,
       "end": 2.5,
-      "text": "HIDDEN DOOM",
-      "voiceover": "Nobody noticed... for two full years... a complete version of Doom was running inside Minecraft's code.",
+      "text": "THE HOOK",
+      "voiceover": "Nobody noticed... for years... a secret was hidden right in front of us.",
       "text_effect": "pop",
       "position": "top",
-      "highlight_word": "DOOM"
+      "highlight_word": "SECRET"
     },
     {
       "start": 2.5,
       "end": 7.0,
       "text": "STAY WATCHING",
-      "voiceover": "Stay till the end, because the reason it survived every update... is the strangest part of this whole story.",
+      "voiceover": "Stay till the end... because the US government actually tried to cover this up.",
       "text_effect": "typewriter",
       "position": "center",
       "highlight_word": "WATCHING"
     },
     {
       "start": 7.0,
-      "end": 19.0,
-      "text": "SINCE 1979",
-      "voiceover": "Easter eggs go back to 1979. A developer hid his name inside an Atari game, without his employer knowing. It was rebellion... a signature they couldn't remove.",
+      "end": 55.0,
+      "text": "THE EVIDENCE",
+      "voiceover": "The data shows that in 1995... [Details of the fact]... and honestly, that's insane.",
       "text_effect": "glitch",
       "position": "center",
-      "highlight_word": "1979"
+      "highlight_word": "EVIDENCE"
     },
     {
-      "start": 19.0,
-      "end": 33.0,
-      "text": "SURVIVED UPDATES",
-      "voiceover": "Data miners found the Minecraft code, buried in unused memory. It had survived multiple version migrations... that should have deleted it. Someone made sure it stayed.",
-      "text_effect": "pop",
-      "position": "top",
-      "highlight_word": "SURVIVED"
-    },
-    {
-      "start": 33.0,
-      "end": 48.0,
-      "text": "FULLY PLAYABLE",
-      "voiceover": "Not a reference. Not a texture. Researchers extracted it and ran it. Complete levels, enemies, weapons... the entire original Doom engine, running inside Minecraft's Java client.",
-      "text_effect": "glitch",
-      "position": "center",
-      "highlight_word": "PLAYABLE"
-    },
-    {
-      "start": 48.0,
-      "end": 62.0,
-      "text": "NEVER CONFIRMED",
-      "voiceover": "Mojang has never commented. The developer suspected of placing it there... has stayed completely silent. No confirmation. No denial. Nothing.",
-      "text_effect": "typewriter",
-      "position": "center",
-      "highlight_word": "CONFIRMED"
-    },
-    {
-      "start": 62.0,
-      "end": 78.0,
-      "text": "STILL THERE",
-      "voiceover": "As of the latest version... traces remain. Modified, but present. Whoever put it there, is still maintaining it across updates. Quietly. Deliberately.",
-      "text_effect": "glitch",
-      "position": "top",
-      "highlight_word": "THERE"
-    },
-    {
-      "start": 78.0,
-      "end": 90.0,
+      "start": 55.0,
+      "end": 59.0,
       "text": "FOLLOW NOW",
-      "voiceover": "Drop a comment if this broke your brain. Follow, for more gaming secrets... nobody is supposed to know about.",
+      "voiceover": "Drop a comment if this broke your brain. Follow for more secrets.",
       "text_effect": "pop",
       "position": "bottom",
       "highlight_word": "FOLLOW"
@@ -269,13 +233,16 @@ CATEGORY: {category.upper()}
 THEME: {theme}
 SFX STYLE: {sfx_style}
 PACING: {pace_guide}
-TARGET: 90-120 second video for YouTube Shorts + TikTok. US-first audience.
+TARGET: EXACTLY 58-59 second video for YouTube Shorts + TikTok. 
+AUDIENCE: US-based (use US slang, US cultural references, and American-English).
 
 ANALYTICS FEEDBACK:
 {analytics_feedback if analytics_feedback else "No feedback yet — use YouTube Shorts best practices."}
 
 DO NOT repeat these recent topics:
 {forbidden_topics}
+
+DO NOT USE THE "DOOM/MINECRAFT" TOPIC FROM THE EXAMPLE.
 
 STYLE REFERENCE (match energy, do not copy topics):
 {examples}
@@ -300,7 +267,7 @@ PART 2 — EDGE-TTS PUNCTUATION RULES (CRITICAL FOR VOICE)
 The voiceover text is processed by an AI voice engine (Edge-TTS or ElevenLabs).
 Heavy punctuation forces natural breathing and prevents robotic delivery.
 
-V1. Use "..." (ellipsis) for dramatic pauses — 600ms of silence. Use 2-4 per segment.
+V1. Use "..." (ellipsis) for dramatic pauses — 600ms of silence. Use 1-2 per segment.
 V2. Use "," (comma) for natural breath pauses between thoughts.
 V3. Use short sentence fragments for punch: "Nobody noticed. For two years."
     Edge-TTS handles fragments better than long compound sentences.
@@ -321,14 +288,10 @@ PART 3 — PRODUCTION RULES
 R1.  topic ends in "..." — triggers curiosity or disbelief.
 R2.  No emojis anywhere in the JSON.
 R3.  description: 400+ words. Conversational opener first, then SEO. 3+ hashtags.
-     ROTATE openers every video — never use the same opener twice:
-     Option A: Open with a question ("Have you ever wondered why...")
-     Option B: Open with a shocking statement ("In 2003, a programmer did something...")
-     Option C: Open with "Most people don't know that..."
-R4.  tags: exactly 15 lowercase strings. At least 4 must be colloquial:
-     e.g. "mind blown", "wtf gaming", "actually crazy", "nobody knew this"
-R5.  segments: 8 to 12 total. Each segment.end must exactly equal next segment.start.
-R6.  Total voiceover duration targets 90-120 seconds at 2.5 words per second.
+     ROTATE openers every video — never use the same opener twice.
+R4.  tags: exactly 15 lowercase strings. At least 4 must be colloquial.
+R5.  segments: 5 to 7 total. Each segment.end must exactly equal next segment.start.
+R6.  Total voiceover duration targets EXACTLY 58-59 seconds at 2.5 words per second.
      Count words per segment: words ÷ 2.5 = seconds. Match start/end timing exactly.
 R7.  text (on-screen caption): 1-3 WORDS ONLY. Never a full sentence.
 R8.  voiceover and text say DIFFERENT things. Caption = punchline/label. Voiceover = explanation.
@@ -344,21 +307,14 @@ R12. SEGMENT 0 (Hook):
 R13. SEGMENT 1 (Tease):
      - text_effect = "typewriter", position = "center"
      - Must contain "stay till the end" or equivalent retention phrase
-     - Include ellipsis before the payoff: "stay till the end... because what they found"
+     - Include ellipsis before the payoff.
 R14. LAST SEGMENT (CTA):
+     - end MUST BE 59.0
      - text_effect = "pop", position = "bottom"
-     - ROTATE the CTA phrase — never the same twice:
-       Option A: "Drop a comment if this broke your brain. Follow for Part 2."
-       Option B: "SMASH LIKE if you didn't know this. What game should I cover next?"
-       Option C: "Tell me below, did you already know this? Follow so you don't miss it."
+     - ROTATE the CTA phrase.
 R15. search_keyword: {keyword_hint}
 R16. backup_keywords: list of 2 alternative Pexels search terms.
-R17. TOPIC FORMULA — use one of these proven high-retention structures:
-     A) "The [famous thing] that secretly [unexpected action]..."
-     B) "Why [assumed truth] is actually [the complete opposite]..."
-     C) "The [role] who [did something nobody was supposed to know]..."
-     D) "What happened [X seconds/hours] before [famous historical event]..."
-     E) "The [number]-year-old [fact] that [authority] never explained..."
+R17. TOPIC FORMULA — use one of these proven high-retention structures.
 
 Return ONLY the JSON object. No preamble, no markdown, no explanation.
 """
@@ -461,6 +417,15 @@ def generate_full_package(category, local_excludes=None):
                 if not ok:
                     last_err = f"Validation failed: {reason}"
                     print(f"  Warning: {last_err} — trying next model")
+                    break
+
+                # ── DOOM REPETITION SAFETY CHECK ────────────────────────────
+                generated_topic = package.get("topic", "").lower()
+                if "doom" in generated_topic and "minecraft" in generated_topic:
+                    last_err = "Model returned the 'Doom/Minecraft' example topic."
+                    print(f"  Warning: {last_err} — forcing retry with next model.")
+                    # Add to excludes so it doesn't happen again
+                    used_topics.append(package.get("topic"))
                     break
 
                 # Persist to Supabase (non-fatal if it fails)
