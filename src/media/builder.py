@@ -144,12 +144,15 @@ def make_cloud_video(
     if total_frames < 150:
         return None, f"Video too short: {total_frames} frames (min 150)"
 
-    # SAFETY CHUNKING (v13.3): 
-    # Your 3GB Lambda is rendering at ~1.5 FPS. 900f (30s) was still timing out.
-    # 600f (20s) takes ~400s to render, which fits safely within your 600s limit.
-    frames_per_lambda = min(total_frames, 600)
+    # SAFETY CHUNKING (v13.4): 
+    # Your 3GB Lambda is rendering at ~1.5 FPS. 600f (20s) was sometimes timing out.
+    # 450f (15s) takes ~300s to render, which fits much more safely within your 600s limit.
+    frames_per_lambda = min(total_frames, 450)
     chunk_count = math.ceil(total_frames / frames_per_lambda)
-    print(f"  Render plan: {total_frames} frames → {chunk_count} chunk(s) of {frames_per_lambda}f (Safety Chunking v13.3-ENFORCED)", flush=True)
+    print(f"  Render plan: {total_frames} frames → {chunk_count} chunk(s) of {frames_per_lambda}f (Safety Chunking v13.4-ENFORCED)", flush=True)
+
+    if chunk_count >= 8:
+        print(f"  WARNING: High chunk count ({chunk_count}). Stitcher may time out. Consider increasing Lambda Timeout or simplifying the video.", flush=True)
 
     bgm_volume = 0.10 if category == "gaming" else 0.07
 
@@ -204,12 +207,14 @@ def make_cloud_video(
 
             if _is_stitcher_timeout(error_data):
                 if attempt < RENDER_RETRIES:
-                    # Stitcher timeout in single-chunk mode means the render is too slow for the 600s Lambda limit.
-                    print("  Render timeout (Single-Chunk v13) — will retry. Likely heavy assets or long duration.", flush=True)
+                    # Stitcher timeout or Chunk timeout in single/multi-chunk mode.
+                    # This means the render is too slow for the 600s Lambda limit.
+                    print(f"  Render timeout (Attempt {attempt+1}) — will retry. Likely heavy assets or long duration.", flush=True)
                     continue
+                
                 err = (
-                    "Lambda Timeout (600s) after all retries. The video is too complex or long for a single-chunk render on this function. "
-                    "ACTION: Use a shorter BGM, reduce video length, or increase Lambda Timeout to 900s in AWS Console."
+                    f"Lambda Timeout (600s) after all retries. The video is too complex or long for the current {frames_per_lambda}f chunks. "
+                    "ACTION: Increase Lambda Timeout to 900s in AWS Console, reduce video length, or simplify assets."
                 )
                 print(f"\n  {err}", flush=True)
                 return None, err
