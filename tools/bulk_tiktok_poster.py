@@ -90,6 +90,7 @@ def drain_tiktok_queue():
             
         # 2. Upload
         try:
+            import threading
             from tiktok_uploader.upload import upload_video
             
             cookies_path = _prepare_cookies()
@@ -99,15 +100,31 @@ def drain_tiktok_queue():
                 
             # Local manual mode: Headless is False so user can solve captchas
             is_headless = False
-            print(f"Launching LOCAL browser via library...")
+            print(f"Launching LOCAL browser via threaded-sync mode...")
             
-            # Using simple direct call since we are in a loop
-            result = upload_video(
-                local_filename,
-                description=desc,
-                cookies=cookies_path,
-                headless=is_headless,
-            )
+            thread_result = None
+            thread_err = None
+
+            def _run_sync_upload():
+                nonlocal thread_result, thread_err
+                try:
+                    thread_result = upload_video(
+                        local_filename,
+                        description=desc,
+                        cookies=cookies_path,
+                        headless=is_headless,
+                    )
+                except Exception as e:
+                    thread_err = e
+
+            # We must run this in a thread because Supabase/Httpx might have 
+            # already started an asyncio loop, which crashes Playwright Sync API
+            upload_thread = threading.Thread(target=_run_sync_upload)
+            upload_thread.start()
+            upload_thread.join()
+
+            if thread_err: raise thread_err
+            result = thread_result
             
             if isinstance(result, list) and len(result) > 0:
                 print(f"[RETRY ERROR] {result[0]}")

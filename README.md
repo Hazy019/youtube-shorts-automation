@@ -145,6 +145,14 @@ python tools/bulk_tiktok_poster.py
 - Sends a **"Video Posted to TikTok"** ping to your Discord `#factory-queue` channel for each video.
 - Sends a final **"Queue Fully Processed"** summary when done.
 
+### Step 3: Run the Professional Daily Report
+```bash
+python -m src.utils.youtube_discord_report
+```
+- Fetches real-time channel statistics (Subscribers, Total Views).
+- Pulls metrics for your 3 most recent uploads.
+- **AI Professional Analysis**: Uses Gemini to analyze performance fluctuations and provides two concrete strategic recommendations for your next topics and hooks to maximize retention.
+
 ---
 
 ## Maintenance & Features
@@ -159,6 +167,7 @@ If AWS Lambda is busy or your account hits a burst limit, the bot will notify yo
 Monitor your production pipeline entirely through Discord. You will receive:
 - 🏗️ **Factory Start** alerts — so you know production has begun.
 - ✅ **Production Complete** summaries with a **direct ping** to notify you.
+- 📊 **Professional Daily Analytics** with AI-driven topic and hook analysis.
 - ✅ **Video Posted to TikTok** alerts from the bulk poster.
 - 🚨 **Emergency Alerts** with full error tracebacks for any service failures.
 
@@ -169,6 +178,7 @@ Monitor your production pipeline entirely through Discord. You will receive:
 ```
 youtube-shorts-automator/
 ├── run_factory.py                  # Main orchestrator — run this to produce a video
+├── run_analytics.py                # Deep-dive Weekly Analytics (Retention & Geo)
 ├── src/
 │   ├── ai/
 │   │   ├── brain.py                # Gemini script generation with model failover
@@ -180,9 +190,11 @@ youtube-shorts-automator/
 │   │   ├── assets.py               # 5-tier B-roll hierarchy + Drive/S3/Pexels sync
 │   │   └── builder.py              # AWS Lambda render orchestrator + dynamic chunking
 │   └── utils/
-│       └── discord.py              # All Discord notification webhook functions
+│       ├── discord.py              # All Discord notification webhook functions
+│       ├── analytics_core.py       # Weekly analytics logic (Retention & US Geo)
+│       └── youtube_discord_report.py # Professional Daily Report + AI Strategic Analysis
 ├── tools/
-│   ├── bulk_tiktok_poster.py       # Local TikTok queue drainer
+│   ├── bulk_tiktok_poster.py       # Local TikTok queue drainer (Threaded-Sync Edition)
 │   ├── update_tokens.py            # Google OAuth token refresher
 │   └── capture_tiktok_cookies.py   # TikTok browser session capture tool
 ├── hazy-remotion-cloud/            # React + Remotion video engine source code
