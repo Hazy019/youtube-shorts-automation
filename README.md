@@ -31,6 +31,47 @@ Version 13 addresses viewer feedback regarding "AI voice" patterns and "horrible
 
 ---
 
+## Cloud-Native Infrastructure
+
+The Hazy Chanel Automator is not just a script; it is a fully orchestrated cloud-native system designed for 24/7 production with zero maintenance.
+
+```mermaid
+graph TD
+    subgraph "Orchestration (GitHub Actions)"
+        A[Workflow Trigger] --> B[Python Orchestrator]
+    end
+
+    subgraph "AI & Assets"
+        B --> C[Gemini AI]
+        B --> D[ElevenLabs]
+        B --> E[Google Drive]
+    end
+
+    subgraph "Serverless Rendering (AWS)"
+        B --> F[AWS Lambda]
+        F --> G[Remotion Engine]
+        G --> H[S3 Bucket]
+    end
+
+    subgraph "Distribution"
+        B --> I[YouTube API]
+        B --> J[Supabase Queue]
+        B --> K[Discord Webhooks]
+    end
+```
+
+### 1. Orchestration via GitHub Actions
+- **Autopilot Mode**: The pipeline is triggered twice daily (7 AM and 7 PM ET) via GitHub Action CRON jobs. 
+- **Zero-Footprint**: No local server or "always-on" machine is required. Everything runs in a clean, ephemeral GitHub runner.
+- **Weekly Feedback Loop**: A specialized analytics workflow runs every Monday, providing AI-driven insights to optimize future video topics.
+
+### 2. Serverless Rendering via AWS Lambda
+- **Parallel Production**: By offloading rendering to AWS Lambda, the system can produce and render videos at scale without hardware bottlenecks.
+- **Remotion Integration**: Uses a custom React-based video engine that converts AI-generated scripts into broadcast-quality visuals.
+- **High Concurrency**: Supports multiple simultaneous renders, allowing for rapid expansion to multiple channels.
+
+---
+
 ## Prerequisites
 
 Before getting started, ensure you have accounts and API keys for:
@@ -104,7 +145,14 @@ DISCORD_PING_USER_ID="your_discord_numeric_user_id"
 
 > **Never share your `.env` file.** It contains private API keys that grant full access to your cloud account, database, and social media platforms. It is already listed in `.gitignore` — keep it that way.
 
-### Step 3 — Authenticate Google APIs
+### Step 3 — (Optional) Configure GitHub Secrets
+If you plan to run the pipeline automatically via GitHub Actions (as intended), you must add each variable from your `.env` as a **Repository Secret** in GitHub:
+1. Go to your repository on GitHub.
+2. Settings → Secrets and variables → Actions.
+3. Add a "New repository secret" for every key listed in the `.env` template above.
+4. For JSON tokens (`token_youtube.json`, etc.), paste the raw JSON content as the secret value.
+
+### Step 4 — Authenticate Google APIs
 Run the following to generate your OAuth tokens for YouTube and Google Drive:
 ```bash
 python tools/update_tokens.py
@@ -115,7 +163,7 @@ This will open a browser window asking you to authorize both the YouTube Data AP
 
 > These token files contain private OAuth credentials. Do not commit them to version control.
 
-### Step 4 — Deploy the Remotion Lambda Function
+### Step 5 — Deploy the Remotion Lambda Function
 Follow the [Remotion Lambda Setup Guide](https://www.remotion.dev/docs/lambda) to deploy your render function to AWS. Once deployed, paste the function name and S3 serve URL into your `.env`.
 
 ---

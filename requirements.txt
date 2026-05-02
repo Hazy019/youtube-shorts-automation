@@ -13,3 +13,4 @@ google-auth==2.49.1
 pydub==0.25.1
 remotion-lambda==4.0.443
 pydantic>=2.9.0
+tenacity>=9.1.4

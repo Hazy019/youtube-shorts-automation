@@ -26,7 +26,7 @@ def get_analytics_service():
         ping_error(err, "Analytics Service")
         return None
     
-    creds = Credentials.from_authorized_user_file("token_youtube.json", SCOPES)
+    creds = Credentials.from_authorized_user_file("token_youtube.json")
     
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:

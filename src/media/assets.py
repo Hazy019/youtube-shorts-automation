@@ -69,7 +69,7 @@ FALLBACK_HISTORY = [
 def get_drive_service():
     creds = None
     if os.path.exists("token_drive.json"):
-        creds = Credentials.from_authorized_user_file("token_drive.json", SCOPES)
+        creds = Credentials.from_authorized_user_file("token_drive.json")
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())

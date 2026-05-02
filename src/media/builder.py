@@ -144,12 +144,12 @@ def make_cloud_video(
     if total_frames < 150:
         return None, f"Video too short: {total_frames} frames (min 150)"
 
-    # SAFETY CHUNKING (v13.4): 
-    # Your 3GB Lambda is rendering at ~1.5 FPS. 600f (20s) was sometimes timing out.
-    # 450f (15s) takes ~300s to render, which fits much more safely within your 600s limit.
-    frames_per_lambda = min(total_frames, 450)
+    # SAFETY CHUNKING (v13.5): 
+    # Your 3GB Lambda is rendering at ~1.5 FPS. 450f (15s) was sometimes timing out.
+    # 300f (10s) takes ~200s to render, which fits much more safely within your 600s limit.
+    frames_per_lambda = min(total_frames, 300)
     chunk_count = math.ceil(total_frames / frames_per_lambda)
-    print(f"  Render plan: {total_frames} frames → {chunk_count} chunk(s) of {frames_per_lambda}f (Safety Chunking v13.4-ENFORCED)", flush=True)
+    print(f"  Render plan: {total_frames} frames → {chunk_count} chunk(s) of {frames_per_lambda}f (Safety Chunking v13.5-ENFORCED)", flush=True)
 
     if chunk_count >= 8:
         print(f"  WARNING: High chunk count ({chunk_count}). Stitcher may time out. Consider increasing Lambda Timeout or simplifying the video.", flush=True)

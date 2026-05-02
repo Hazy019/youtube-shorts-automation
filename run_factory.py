@@ -111,7 +111,7 @@ def produce_video(category, local_excludes=None):
         sfx_urls,
         bgm_url,
         viral_package['segments'],
-        duration,
+        min(duration, 59.0), # Hard-cap at 59.0s for Shorts compliance
         category=category,
         render_seed=render_seed
     )

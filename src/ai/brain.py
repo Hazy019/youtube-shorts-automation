@@ -101,17 +101,34 @@ def validate_full_package(data):
     seg_keys = ["start", "end", "text", "voiceover",
                 "text_effect", "position", "highlight_word"]
     valid_effects = ("pop", "glitch", "typewriter")
+    
+    # ── Duration & Hook Validation ──────────────────────────────────────────
     for i, s in enumerate(data["segments"]):
         if not all(k in s for k in seg_keys):
             return False, f"Segment {i} missing keys: {list(s.keys())}"
+        
         if s.get("text_effect") not in valid_effects:
             s["text_effect"] = "pop"
+
+        # Force Hook constraints (Segment 0)
         if i == 0 and s.get("end", 99) > 3.5:
             s["end"] = 3.5
             if len(data["segments"]) > 1:
-                data["segments"][1]["start"] = max(
-                    3.5, data["segments"][1].get("start", 3.5)
-                )
+                data["segments"][1]["start"] = max(3.5, data["segments"][1].get("start", 3.5))
+
+        # Force Shorts constraint (MAX 59.0s)
+        # If any segment drifts past 59s, we truncate it and all subsequent segments.
+        if s.get("start", 0) >= 59.0:
+            print(f"  Warning: Truncating segment {i} (starts at {s['start']}s >= 59s)")
+            data["segments"] = data["segments"][:i]
+            break
+        
+        if s.get("end", 0) > 59.0:
+            print(f"  Warning: Capping segment {i} end time at 59.0s (was {s['end']}s)")
+            s["end"] = 59.0
+            data["segments"] = data["segments"][:i+1] # This is the last valid segment
+            break
+
     return True, None
 
 

@@ -46,7 +46,8 @@ def post_and_pin_comment(youtube, video_id, text):
 def get_authenticated_service():
     creds = None
     if os.path.exists('token_youtube.json'):
-        creds = Credentials.from_authorized_user_file('token_youtube.json', SCOPES)
+        # Load from file without enforcing hardcoded scopes to avoid 'invalid_scope' during refresh
+        creds = Credentials.from_authorized_user_file('token_youtube.json')
     
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
