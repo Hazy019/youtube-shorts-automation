@@ -46,8 +46,14 @@ def post_and_pin_comment(youtube, video_id, text):
 def get_authenticated_service(token_name='token_youtube.json'):
     creds = None
     if os.path.exists(token_name):
-        # Load from file without enforcing hardcoded scopes to avoid 'invalid_scope' during refresh
-        creds = Credentials.from_authorized_user_file(token_name)
+        # Check if file is empty to prevent JSONDecodeError (happens if GitHub Secret is missing)
+        if os.path.getsize(token_name) < 5:
+            print(f"  Warning: {token_name} is empty or invalid. Ignoring.")
+        else:
+            try:
+                creds = Credentials.from_authorized_user_file(token_name)
+            except Exception as e:
+                print(f"  Warning: Failed to parse {token_name}: {e}")
     
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:

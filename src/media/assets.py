@@ -107,7 +107,14 @@ def trim_video_ffmpeg(input_path, output_path, duration):
 def get_drive_service():
     creds = None
     if os.path.exists("token_drive.json"):
-        creds = Credentials.from_authorized_user_file("token_drive.json")
+        if os.path.getsize("token_drive.json") < 5:
+            print("  Warning: token_drive.json is empty or invalid. Ignoring.")
+        else:
+            try:
+                creds = Credentials.from_authorized_user_file("token_drive.json")
+            except Exception as e:
+                print(f"  Warning: Failed to parse token_drive.json: {e}")
+    
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
