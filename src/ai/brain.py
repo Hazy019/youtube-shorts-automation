@@ -373,6 +373,21 @@ def generate_full_package(category, local_excludes=None):
         keyword_hint = 'Return ONLY the string "Parkour". Gaming b-roll always uses parkour footage.'
         sfx_style    = "energetic, punchy — glitch and pop effects aggressively"
         pace_guide   = "Fast cuts. Short punchy sentences. Hook creates instant disbelief."
+    elif category == "us-centric":
+        theme        = "High-energy US-centric facts, cultural anomalies, and American history with relatable humor and slang."
+        examples     = (
+            "- The secret physics of the Great Molasses Flood that shut down Boston...\\n"
+            "- Why the US government actually tried to outlaw pinball for 30 years...\\n"
+            "- The hidden US law that makes it illegal to collect rainwater in some states...\\n"
+            "- The American-centric hook: 'Imagine a sticky situation so bad, it shut down a whole city...'\\n"
+            "- The untold story of why US milk cartons used to have missing person photos..."
+        )
+        keyword_hint = 'Return a 2-word Pexels keyword matching a US city, landmark, or cultural item (e.g., "New York", "American Flag").'
+        sfx_style    = "punchy, urban, modern US style — pop and whoosh"
+        pace_guide   = "High energy. Use US slang and cultural references. Hook must be relatable to American experiences."
+        
+        # Inject the specific user feedback for US retention
+        feedback += "\nUS RETENTION STRATEGY: Inject relatable US cultural references and language. Instead of generic hooks, tailor them to American experiences and humor. Use hooks like: 'Imagine a sticky situation so bad, it shut down a whole city... no, not rush hour traffic...'"
     else:
         theme        = "Mind-blowing science, untold history, psychology tricks, and counterintuitive facts."
         examples     = (

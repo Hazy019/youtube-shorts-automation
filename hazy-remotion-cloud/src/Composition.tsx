@@ -11,9 +11,9 @@ const { fontFamily } = loadFont();
 // Reduced from previous values — voiceover at 1.0 is DOMINANT.
 // BGM is atmosphere only (set in builder.py: gaming=0.10, general=0.07).
 // SFX accent the edit — they should be felt, not heard over the voiceover.
-const SFX_VOL_HOOK = 0.28;   // was 0.55 — boom at segment 0
-const SFX_VOL_CTA = 0.22;   // was 0.45 — riser at last segment
-const SFX_VOL_MID = 0.18;   // was 0.35 — all body segments
+const SFX_VOL_HOOK = 0.20;   // was 0.28 — boom at segment 0
+const SFX_VOL_CTA = 0.20;   // was 0.22 — riser at last segment
+const SFX_VOL_MID = 0.15;   // was 0.18 — all body segments
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface Segment {

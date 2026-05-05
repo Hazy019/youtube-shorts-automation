@@ -1,9 +1,11 @@
-name: Daily Hazy Chanel Factory
+name: US Channel - Daily Factory
 
 on:
   schedule:
-    - cron: '0 11 * * *'   # 7 AM ET — US morning
-    - cron: '0 23 * * *'   # 7 PM ET — US prime time
+    - cron: '0 10 * * *'   # 6 AM ET — US morning Early
+    - cron: '0 13 * * *'   # 9 AM ET — US morning Peak
+    - cron: '0 21 * * *'   # 5 PM ET — US evening Early
+    - cron: '0 02 * * *'   # 10 PM ET — US late night
   workflow_dispatch:
 
 jobs:
@@ -17,29 +19,18 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: pip-
-
+      - name: Install System FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Recreate Auth Tokens
         env:
           DRIVE_TOKEN:    ${{ secrets.DRIVE_TOKEN_JSON }}
-          YOUTUBE_TOKEN_HAZY: ${{ secrets.YOUTUBE_TOKEN_HAZY }}
           YOUTUBE_TOKEN_US:   ${{ secrets.YOUTUBE_TOKEN_US }}
           CLIENT_SECRETS: ${{ secrets.CLIENT_SECRETS_JSON }}
-          IG_SESSION:     ${{ secrets.IG_SESSION_JSON }}
         run: |
-          echo "$DRIVE_TOKEN"         > token_drive.json
-          echo "$YOUTUBE_TOKEN_HAZY"  > token_youtube_hazy.json
-          echo "$YOUTUBE_TOKEN_US"    > token_youtube_us.json
-          echo "$CLIENT_SECRETS"      > client_secrets.json
-          if [ -n "$IG_SESSION" ]; then
-            echo "$IG_SESSION" > ig_session.json
-          fi
+          echo "$DRIVE_TOKEN"       > token_drive.json
+          echo "$YOUTUBE_TOKEN_US"  > token_youtube_us.json
+          echo "$CLIENT_SECRETS"    > client_secrets.json
 
       - name: Create .env File
         run: |
@@ -52,8 +43,9 @@ jobs:
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
           echo "BUCKET_NAME=${{ secrets.BUCKET_NAME }}" >> .env
           echo "SERVE_URL=${{ secrets.SERVE_URL }}" >> .env
-          echo "ROBLOX_FOLDER_ID=${{ secrets.ROBLOX_FOLDER_ID }}" >> .env
           echo "PARKOUR_FOLDER_ID=${{ secrets.PARKOUR_FOLDER_ID }}" >> .env
+          echo "SCIENCE_BROLL_FOLDER_ID=${{ secrets.SCIENCE_BROLL_FOLDER_ID }}" >> .env
+          echo "HISTORY_BROLL_FOLDER_ID=${{ secrets.HISTORY_BROLL_FOLDER_ID }}" >> .env
           echo "SFX_FOLDER_ID=${{ secrets.SFX_FOLDER_ID }}" >> .env
           echo "GAMING_BGM_FOLDER_ID=${{ secrets.GAMING_BGM_FOLDER_ID }}" >> .env
           echo "GENERAL_BGM_FOLDER_ID=${{ secrets.GENERAL_BGM_FOLDER_ID }}" >> .env
@@ -61,25 +53,15 @@ jobs:
           echo "WEBHOOK_ERRORS=${{ secrets.WEBHOOK_ERRORS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
           echo "WEBHOOK_POSTS=${{ secrets.WEBHOOK_POSTS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
           echo "WEBHOOK_QUEUE=${{ secrets.WEBHOOK_QUEUE || secrets.DISCORD_WEBHOOK_URL }}" >> .env
-          echo "WEBHOOK_INSIGHTS=${{ secrets.WEBHOOK_INSIGHTS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
-          echo "TIKTOK_COOKIES_JSON=${{ secrets.TIKTOK_COOKIES_JSON }}" >> .env
-          echo "TIKTOK_COOKIES_TXT=${{ secrets.TIKTOK_COOKIES_TXT }}" >> .env
           echo "FUNCTION_NAME=${{ secrets.FUNCTION_NAME }}" >> .env
           echo "GITHUB_ACTIONS=true" >> .env
-
-      - name: Verify Critical Secrets
-        run: |
-          python -m pip install python-dotenv
-          python -c 'import os; from dotenv import load_dotenv; load_dotenv(); critical = ["GEMINI_API_KEY", "SUPABASE_URL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "BUCKET_NAME", "SERVE_URL", "PARKOUR_FOLDER_ID"]; missing = [k for k, v in {k: os.getenv(k) for k in critical}.items() if not v]; exit(f"::error::Missing critical secrets: {missing}") if missing else print("All critical secrets found.")'
 
       - name: Install Python Requirements
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install System Deps
-        run: |
-          sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Run Factory
+      - name: Run Factory (US Targeted)
+        env:
+          SHIFT_CHANNEL: "US Channel"
         run: python run_factory.py

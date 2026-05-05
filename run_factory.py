@@ -4,6 +4,7 @@ import time
 import requests
 import random
 import traceback
+import boto3
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -58,8 +59,30 @@ from src.media.builder import make_cloud_video
 from src.api.youtube import upload_video
 from src.utils.discord import ping_creator, ping_error, ping_render_start, ping_queue
 
-def produce_video(category, local_excludes=None):
-    print(f"\n--- STARTING PRODUCTION FOR CATEGORY: {category.upper()} ---")
+def extract_s3_key(url):
+    """Extract object key from a pre-signed or direct S3 URL."""
+    try:
+        path = urlparse(url).path
+        return path.lstrip('/')
+    except:
+        return None
+
+def cleanup_s3_assets(keys):
+    """Delete temporary background and audio assets from S3."""
+    if not keys: return
+    # Filter out None and deduplicate
+    unique_keys = list(set(k for k in keys if k))
+    print(f"\n--- S3 CLEANUP: Deleting {len(unique_keys)} temporary assets ---")
+    s3 = boto3.client("s3", region_name="us-east-1")
+    for key in unique_keys:
+        try:
+            s3.delete_object(Bucket=os.getenv("BUCKET_NAME"), Key=key)
+            print(f"  ✓ Deleted: {key}")
+        except Exception as e:
+            print(f"  ⚠ Failed to delete {key}: {e}")
+
+def produce_video(category, local_excludes=None, token_name='token_youtube.json'):
+    print(f"\n--- STARTING PRODUCTION FOR CATEGORY: {category.upper()} (Token: {token_name}) ---")
 
     try:
         full_package = generate_full_package(category, local_excludes=local_excludes)
@@ -90,7 +113,8 @@ def produce_video(category, local_excludes=None):
         topic,
         search_keyword,
         backup_keywords=viral_package.get('backup_keywords'),
-        num_clips=3   # 3 clips = 3 visual cuts = 70%+ retention
+        num_clips=3,
+        max_duration=duration
     )
     sfx_urls = get_sfx_urls(num_sfx=max(7, len(viral_package['segments'])))
 
@@ -147,7 +171,8 @@ def produce_video(category, local_excludes=None):
             viral_package['title'],
             viral_package['description'],
             category,
-            tags=viral_package.get('tags')
+            tags=viral_package.get('tags'),
+            token_name=token_name
         )
 
         tiktok_status = "Skipped"
@@ -201,6 +226,18 @@ def produce_video(category, local_excludes=None):
         
         ping_creator(youtube_link or "Upload Failed", tiktok_status, "N/A", viral_package['title'])
 
+        # --- S3 ASSET CLEANUP (TASK 2) ---------------------------------------
+        # We collect all temporary input keys. We do NOT delete final_video_url 
+        # because the TikTok uploader might still need to fetch it from S3.
+        temp_keys = []
+        temp_keys.append(extract_s3_key(audio_url))
+        temp_keys.append(extract_s3_key(bgm_url))
+        for v in video_urls: temp_keys.append(extract_s3_key(v))
+        for s in sfx_urls:   temp_keys.append(extract_s3_key(s))
+        
+        cleanup_s3_assets(temp_keys)
+        # ---------------------------------------------------------------------
+
         if os.path.exists(local_filename):
             os.remove(local_filename)
         print(f"Local temp file deleted. {category.upper()} Syndication Cycle Complete!")
@@ -219,48 +256,69 @@ def produce_video(category, local_excludes=None):
         return None, None, False
 
 def start_factory():
-    print("HAZY CHANEL AUTOMATION STARTING SINGLE SHIFT...\n" + "="*40)
+    print("HAZY MULTI-CHANNEL FACTORY STARTING...\n" + "="*40)
     
-    categories = ["gaming", "general"]
-    today_shift = random.choice(categories)
-    print(f"Today's Shift: {today_shift.upper()}\n")
+    # Define channel configurations
+    channels = [
+        {
+            "name": "Hazy Insight",
+            "token": "token_youtube_hazy.json",
+            "categories": ["gaming", "general"]
+        },
+        {
+            "name": "US Channel",
+            "token": "token_youtube_us.json",
+            "categories": ["us-centric"]
+        }
+    ]
+
+    # Support targeted runs (e.g., from GitHub Actions specialized workflows)
+    shift_target = os.getenv("SHIFT_CHANNEL")
+    if shift_target:
+        print(f"Targeting specific channel: {shift_target}")
+        channels = [c for c in channels if c["name"].lower() == shift_target.lower()]
+        if not channels:
+            print(f"ERROR: Channel '{shift_target}' not found in configuration.")
+            sys.exit(1)
 
     overall_success = True
-    try:
-        queued_titles = []
-        
-        print(f"--- SHIFT: {today_shift.upper()} ---")
-        produced_topics = []
-        try:
-            topic1, title1, q1 = produce_video(today_shift, local_excludes=produced_topics)
-            if topic1:
-                produced_topics.append(topic1)
-                if q1: 
-                    queued_titles.append(title1)
-            else:
-                overall_success = False
-        except Exception as e:
-            print(f"Shift Fatal: {e}")
-            ping_error(f"Shift crashed: {e}", "Orchestrator")
-            overall_success = False
-            
-        # Only notify about the queue state if the factory run was successful.
-        # This prevents noisy "Queue Updated" pings when a render fails.
-        if overall_success:
-            ping_queue(queued_titles)
-        
-    except Exception as e:
-        err_msg = f"Fatal Orchestrator Failure: {str(e)}"
-        tb = traceback.format_exc()
-        print(f"\nFATAL ERROR: {err_msg}\n{tb}")
-        ping_error(err_msg, "Orchestrator", traceback_str=tb)
-        overall_success = False
+    queued_titles = []
+    produced_topics = []
 
+    for channel in channels:
+        print(f"\n>>> PROCESSING CHANNEL: {channel['name'].upper()} <<<")
+        
+        # Pick a category for this channel
+        category = random.choice(channel["categories"])
+        
+        try:
+            topic, title, queued = produce_video(
+                category, 
+                local_excludes=produced_topics, 
+                token_name=channel["token"]
+            )
+            
+            if topic:
+                produced_topics.append(topic)
+                if queued: 
+                    queued_titles.append(f"[{channel['name']}] {title}")
+            else:
+                print(f"  Warning: Production failed for {channel['name']}. Continuing to next channel.")
+                # We don't mark overall_success = False here if we want other channels to proceed
+        except Exception as e:
+            print(f"  Channel Fatal ({channel['name']}): {e}")
+            ping_error(f"Channel {channel['name']} crashed: {e}", "Orchestrator")
+            overall_success = False
+
+    # Only notify about the queue state if the factory run had at least some success.
+    if queued_titles:
+        ping_queue(queued_titles)
+    
     if not overall_success:
         print("\nFACTORY SHUTDOWN WITH ERRORS. Check logs above.")
         sys.exit(1)
     
-    print("\nFACTORY SHUTTING DOWN. ALL TASKS COMPLETE!")
+    print("\nHAZY MULTI-CHANNEL FACTORY SHUTTING DOWN. ALL TASKS COMPLETE!")
 
 if __name__ == "__main__":
     start_factory()

@@ -184,6 +184,8 @@ cython_debug/
 client_secrets.json
 token_drive.json
 token_youtube.json
+token_youtube_us.json
+token_youtube_hazy.json
 ig_session.json
 .env
 tiktok_cookies.json

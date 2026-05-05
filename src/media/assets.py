@@ -11,6 +11,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+import subprocess
 from pydub import AudioSegment
 from dotenv import load_dotenv
 
@@ -64,6 +65,43 @@ FALLBACK_HISTORY = [
     "Old Library", "Vintage Map", "Dusty Antiques"
 ]
 # ─────────────────────────────────────────────────────────────────────────────
+# ── FFmpeg Trimming Utility ──────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+
+def trim_video_ffmpeg(input_path, output_path, duration):
+    """
+    Highly efficient trimming using system FFmpeg.
+    - input_path: path to raw downloaded video
+    - output_path: path for trimmed video
+    - duration: target length in seconds
+    """
+    target = float(duration) + 2.0  # 2.0s safety buffer
+    print(f"    FFmpeg: Trimming video to {target:.1f}s...")
+    
+    try:
+        # We try stream copy (-c copy) first for instant processing.
+        # If it fails (some codecs don't like partial copies), we fall back to fast encoding.
+        cmd = [
+            "ffmpeg", "-y", "-ss", "00:00:00", "-to", str(target),
+            "-i", input_path, "-c", "copy", "-avoid_negative_ts", "1", output_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print("    FFmpeg: Stream copy failed, falling back to fast encoding...")
+            cmd = [
+                "ffmpeg", "-y", "-ss", "00:00:00", "-to", str(target),
+                "-i", input_path, "-c:v", "libx264", "-preset", "ultrafast", 
+                "-crf", "22", "-c:a", "aac", output_path
+            ]
+            subprocess.run(cmd, check=True, capture_output=True)
+            
+        print(f"    FFmpeg: Trim complete. Output: {output_path}")
+        return True
+    except Exception as e:
+        print(f"    FFmpeg Error: {e}")
+        return False
+
 
 
 def get_drive_service():
@@ -85,7 +123,7 @@ def get_drive_service():
     return build("drive", "v3", credentials=creds)
 
 
-def sync_drive_to_s3(folder_id, num_clips, media_type="video"):
+def sync_drive_to_s3(folder_id, num_clips, media_type="video", max_duration=None):
     if not folder_id:
         print(f"No Drive folder ID for {media_type}. Skipping.")
         return []
@@ -198,9 +236,38 @@ def sync_drive_to_s3(folder_id, num_clips, media_type="video"):
         if media_type == "audio":
             fh = _trim_audio_if_needed(fh, item["name"])
         
+        # ── FFmpeg Video Trimming ──────────────────────────────────────────────
+        final_fh = fh
+        temp_raw = f"temp_raw_{uuid.uuid4().hex}.mp4"
+        temp_trimmed = f"temp_trimmed_{uuid.uuid4().hex}.mp4"
+        
+        if media_type == "video" and max_duration:
+            try:
+                # Save stream to local temp file for FFmpeg to process
+                with open(temp_raw, "wb") as f:
+                    f.write(fh.read())
+                
+                if trim_video_ffmpeg(temp_raw, temp_trimmed, max_duration):
+                    final_fh = open(temp_trimmed, "rb")
+                    print(f"    S3 Upload: Sending trimmed version ({os.path.getsize(temp_trimmed)/1024/1024:.1f}MB)")
+                else:
+                    fh.seek(0)
+                    final_fh = fh
+            except Exception as e:
+                print(f"    Trimming failed, uploading raw: {e}")
+                fh.seek(0)
+                final_fh = fh
+
         print(f"    Uploading to S3 cloud storage...")
         key = f"{s3_prefix}{uuid.uuid4().hex}"
-        s3.upload_fileobj(fh, BUCKET_NAME, key, ExtraArgs={"ContentType": content_type})
+        s3.upload_fileobj(final_fh, BUCKET_NAME, key, ExtraArgs={"ContentType": content_type})
+        
+        # Cleanup
+        if final_fh != fh:
+            final_fh.close()
+        for f in [temp_raw, temp_trimmed]:
+            if os.path.exists(f): os.remove(f)
+
         url = s3.generate_presigned_url(
             "get_object", Params={"Bucket": BUCKET_NAME, "Key": key}, ExpiresIn=7200
         )
@@ -209,7 +276,7 @@ def sync_drive_to_s3(folder_id, num_clips, media_type="video"):
     return urls
 
 
-def _fetch_pexels(keyword, num_clips, page=None):
+def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
     """
     Fetch Pexels videos for a keyword and mirror them to S3.
 
@@ -309,16 +376,34 @@ def _fetch_pexels(keyword, num_clips, page=None):
             print(f"  Pexels → S3: [{keyword}] video {video_id} ({chosen.get('height', '?')}p)")
 
             # Download from Pexels CDN (fast on GitHub runner) → stream to S3
+            temp_raw = f"temp_raw_{uuid.uuid4().hex}.mp4"
+            temp_trimmed = f"temp_trimmed_{uuid.uuid4().hex}.mp4"
+            
             try:
+                print(f"    Downloading raw b-roll from Pexels...")
                 with requests.get(cdn_url, stream=True, timeout=120) as r:
                     r.raise_for_status()
-                    key = f"backgrounds/pexels_{video_id}_{uuid.uuid4().hex[:8]}.mp4"
+                    with open(temp_raw, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                
+                # Trim if duration provided
+                upload_path = temp_raw
+                if max_duration:
+                    if trim_video_ffmpeg(temp_raw, temp_trimmed, max_duration):
+                        upload_path = temp_trimmed
+                
+                key = f"backgrounds/pexels_{video_id}_{uuid.uuid4().hex[:8]}.mp4"
+                print(f"    Uploading to S3 ({os.path.getsize(upload_path)/1024/1024:.1f}MB)...")
+                
+                with open(upload_path, "rb") as f:
                     s3.upload_fileobj(
-                        r.raw,
+                        f,
                         BUCKET_NAME,
                         key,
                         ExtraArgs={"ContentType": "video/mp4"},
                     )
+
                 presigned = s3.generate_presigned_url(
                     "get_object",
                     Params={"Bucket": BUCKET_NAME, "Key": key},
@@ -328,7 +413,9 @@ def _fetch_pexels(keyword, num_clips, page=None):
                 print(f"    ✓ Uploaded to S3 → Lambda will fetch at wire speed.")
             except Exception as e:
                 print(f"  Pexels S3 upload failed for video {video_id}: {e} — skipping clip.")
-                continue
+            finally:
+                for f in [temp_raw, temp_trimmed]:
+                    if os.path.exists(f): os.remove(f)
 
         return urls
 
@@ -337,7 +424,7 @@ def _fetch_pexels(keyword, num_clips, page=None):
         return []
 
 
-def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3):
+def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3, max_duration=None):
     """
     Route b-roll based on topic + Gemini keywords.
     
@@ -356,10 +443,10 @@ def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3):
     gaming_keywords = ["game", "gaming", "minecraft", "roblox", "gta", "elden", "doom", "speedrun", "speedrunning"]
     if any(k in topic_lower for k in gaming_keywords):
         print(f"  Gaming topic detected. Using Parkour Drive.")
-        return sync_drive_to_s3(PARKOUR_FOLDER_ID, num_clips, "video")
+        return sync_drive_to_s3(PARKOUR_FOLDER_ID, num_clips, "video", max_duration=max_duration)
 
     # Route 2: Primary Pexels keyword
-    urls = _fetch_pexels(keyword, num_clips)
+    urls = _fetch_pexels(keyword, num_clips, max_duration=max_duration)
     if len(urls) >= num_clips:
         print(f"  Pexels primary hit: {keyword}")
         return urls
@@ -367,7 +454,7 @@ def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3):
     # Route 3: AI backup keywords
     if backup_keywords:
         for bk in backup_keywords:
-            more = _fetch_pexels(bk, num_clips - len(urls))
+            more = _fetch_pexels(bk, num_clips - len(urls), max_duration=max_duration)
             urls.extend(more)
             if len(urls) >= num_clips:
                 print(f"  Pexels backup hit: {bk}")
@@ -384,7 +471,7 @@ def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3):
         ]
         if any(k in topic_lower for k in science_keywords):
             print(f"  Science topic detected. Pulling {needed} clips from AI_Science_Broll...")
-            more = sync_drive_to_s3(SCIENCE_BROLL_FOLDER_ID, needed, "video")
+            more = sync_drive_to_s3(SCIENCE_BROLL_FOLDER_ID, needed, "video", max_duration=max_duration)
             urls.extend(more)
             
         history_keywords = [
@@ -394,13 +481,13 @@ def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3):
         ]
         if any(k in topic_lower for k in history_keywords):
             print(f"  History topic detected. Pulling {needed} clips from AI_History_Broll...")
-            more = sync_drive_to_s3(HISTORY_BROLL_FOLDER_ID, needed, "video")
+            more = sync_drive_to_s3(HISTORY_BROLL_FOLDER_ID, needed, "video", max_duration=max_duration)
             urls.extend(more)
             
         else:
             # If it's a general topic, use curated fallback keywords on Pexels first
             fallback_kw = random.choice(FALLBACK_NATURE)
-            more = _fetch_pexels(fallback_kw, needed)
+            more = _fetch_pexels(fallback_kw, needed, max_duration=max_duration)
             urls.extend(more)
 
     if len(urls) >= num_clips:
@@ -413,11 +500,11 @@ def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3):
         # Focus on Parkour only as a 50/50 fallback if not gaming
         if random.random() < 0.5:
              print("  Selected Parkour Drive as last resort.")
-             more = sync_drive_to_s3(PARKOUR_FOLDER_ID, needed, "video")
+             more = sync_drive_to_s3(PARKOUR_FOLDER_ID, needed, "video", max_duration=max_duration)
         else:
              fallback_kw = random.choice(FALLBACK_NATURE)
              print(f"  Selected Pexels Nature ({fallback_kw}) as last resort.")
-             more = _fetch_pexels(fallback_kw, needed)
+             more = _fetch_pexels(fallback_kw, needed, max_duration=max_duration)
         urls.extend(more)
 
     return urls[:num_clips]

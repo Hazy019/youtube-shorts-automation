@@ -1,8 +1,8 @@
 """
 tts.py — Text-to-Speech Engine v12
 ------------------------------------
-PRIMARY:  ElevenLabs neural voice (broadcast quality, less detectable)
-FALLBACK: Edge-TTS (free, local) — heavily tuned to avoid AI-detection
+PRIMARY:  Edge-TTS (free, unlimited, high-speed)
+FALLBACK: ElevenLabs (paid, high-fidelity)
 
 EDGE-TTS ANTI-DETECTION STRATEGY:
   1. Voice: AndrewNeural or GuyNeural — NOT ChristopherNeural (most flagged voice)
@@ -138,12 +138,44 @@ def generate_voiceover(script_text: str, category: str = "general"):
     local_file = f"temp_voice_{int(time.time())}.mp3"
     use_fallback = False
 
-    # ── Try ElevenLabs ────────────────────────────────────────────────────
-    usage = check_elevenlabs_quota(api_key)
-    if usage >= 0.95:
-        print(f"  ElevenLabs quota at {usage:.0%} — switching to Edge-TTS.")
+    # ── Primary: Edge-TTS (Free & Unlimited) ───────────────────────────
+    voice_config = _pick_edge_voice(category)
+    # High-energy American storytelling tuning: +5% rate, +1Hz pitch if not already set
+    if category == "us-centric":
+        voice_config["rate"] = "+5%"
+        voice_config["pitch"] = "+1Hz"
+        
+    print(f"  Edge-TTS Primary: {voice_config['name']} rate={voice_config['rate']} pitch={voice_config['pitch']}")
+
+    tts_error = None
+
+    def _run_tts():
+        nonlocal tts_error
+        try:
+            asyncio.run(_generate_edge_tts_async(script_text, local_file, voice_config))
+        except Exception as e:
+            tts_error = e
+
+    t = threading.Thread(target=_run_tts)
+    t.start()
+    t.join(timeout=120)
+
+    if t.is_alive():
+        print("  Edge-TTS timed out. Checking ElevenLabs fallback...")
+        use_fallback = True
+    elif tts_error:
+        print(f"  Edge-TTS error: {tts_error}. Checking ElevenLabs fallback...")
         use_fallback = True
     else:
+        print(f"  Edge-TTS success!")
+
+    # ── Fallback: ElevenLabs (Only if Edge-TTS fails) ──────────────────────
+    if use_fallback:
+        print("  ElevenLabs fallback initiated...")
+        usage = check_elevenlabs_quota(api_key)
+        if usage >= 0.98:
+            return None, 0, "All TTS options exhausted (ElevenLabs quota full)"
+        
         voice_id = random.choice(ELEVENLABS_VOICE_IDS)
         url      = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         headers  = {
@@ -155,9 +187,9 @@ def generate_voiceover(script_text: str, category: str = "general"):
             "text":     script_text,
             "model_id": "eleven_turbo_v2",
             "voice_settings": {
-                "stability":        0.45,   # slight instability = more human variation
+                "stability":        0.45,
                 "similarity_boost": 0.80,
-                "style":            0.30,   # adds expressiveness
+                "style":            0.30,
                 "use_speaker_boost": True,
             },
         }
@@ -166,37 +198,11 @@ def generate_voiceover(script_text: str, category: str = "general"):
             if resp.status_code == 200:
                 with open(local_file, "wb") as f:
                     f.write(resp.content)
-                print(f"  ElevenLabs: voice_id={voice_id[:8]}... OK")
+                print(f"  ElevenLabs Fallback: voice_id={voice_id[:8]}... OK")
             else:
-                print(f"  ElevenLabs error {resp.status_code}: {resp.text[:100]}")
-                use_fallback = True
+                return None, 0, f"ElevenLabs fallback failed ({resp.status_code}): {resp.text[:100]}"
         except requests.RequestException as e:
-            print(f"  ElevenLabs network error: {e}")
-            use_fallback = True
-
-    # ── Fallback: Edge-TTS with anti-detection tuning ─────────────────────
-    if use_fallback:
-        voice_config = _pick_edge_voice(category)
-        print(f"  Edge-TTS fallback: {voice_config['name']} rate={voice_config['rate']} pitch={voice_config['pitch']}")
-        ping_error(f"Edge-TTS fallback active ({voice_config['name']})", "ElevenLabs Quota")
-
-        tts_error = None
-
-        def _run_tts():
-            nonlocal tts_error
-            try:
-                asyncio.run(_generate_edge_tts_async(script_text, local_file, voice_config))
-            except Exception as e:
-                tts_error = e
-
-        t = threading.Thread(target=_run_tts)
-        t.start()
-        t.join(timeout=120)
-
-        if t.is_alive():
-            return None, 0, "Edge-TTS timed out after 120s"
-        if tts_error:
-            return None, 0, f"Edge-TTS error: {tts_error}"
+            return None, 0, f"ElevenLabs fallback network error: {e}"
 
     # ── Validate file exists ──────────────────────────────────────────────
     if not os.path.exists(local_file) or os.path.getsize(local_file) < 1000:

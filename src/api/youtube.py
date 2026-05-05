@@ -43,30 +43,30 @@ def post_and_pin_comment(youtube, video_id, text):
         print(f"Failed to post/pin comment: {e}")
         return False
 
-def get_authenticated_service():
+def get_authenticated_service(token_name='token_youtube.json'):
     creds = None
-    if os.path.exists('token_youtube.json'):
+    if os.path.exists(token_name):
         # Load from file without enforcing hardcoded scopes to avoid 'invalid_scope' during refresh
-        creds = Credentials.from_authorized_user_file('token_youtube.json')
+        creds = Credentials.from_authorized_user_file(token_name)
     
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
             if os.getenv("GITHUB_ACTIONS") == "true":
-                error_msg = "CRITICAL: YouTube Tokens expired. Run tools/update_tokens.py locally and update GitHub Secrets!"
+                error_msg = f"CRITICAL: YouTube Token {token_name} expired. Run tools/update_tokens.py locally and update GitHub Secrets!"
                 ping_error(error_msg, "YouTube Auth")
                 raise Exception(error_msg)
             flow = InstalledAppFlow.from_client_secrets_file('client_secrets.json', SCOPES)
             creds = flow.run_local_server(port=0)
-        with open('token_youtube.json', 'w') as token:
+        with open(token_name, 'w') as token:
             token.write(creds.to_json())
     return googleapiclient.discovery.build('youtube', 'v3', credentials=creds)
 
-def upload_video(video_path, title, description, category="gaming", tags=None):
-    print(f"\nPreparing to upload {video_path} to YouTube...")
+def upload_video(video_path, title, description, category="gaming", tags=None, token_name='token_youtube.json'):
+    print(f"\nPreparing to upload {video_path} to YouTube ({token_name})...")
     
-    youtube = get_authenticated_service()
+    youtube = get_authenticated_service(token_name=token_name)
     if not youtube:
         return False
 

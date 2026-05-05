@@ -27,7 +27,7 @@ import math
 from remotion_lambda import RemotionClient, RenderMediaParams
 
 SERVE_URL     = os.getenv("SERVE_URL", "")
-FUNCTION_NAME = os.getenv("FUNCTION_NAME") or "remotion-render-4-0-443-mem3008mb-disk2048mb-600sec"
+FUNCTION_NAME = os.getenv("FUNCTION_NAME") or "remotion-render-4-0-443-mem3008mb-disk2048mb-900sec"
 REGION        = "us-east-1"
 
 RENDER_RETRIES         = 3
@@ -208,13 +208,13 @@ def make_cloud_video(
             if _is_stitcher_timeout(error_data):
                 if attempt < RENDER_RETRIES:
                     # Stitcher timeout or Chunk timeout in single/multi-chunk mode.
-                    # This means the render is too slow for the 600s Lambda limit.
+                    # This means the render is too slow for the 900s Lambda limit.
                     print(f"  Render timeout (Attempt {attempt+1}) — will retry. Likely heavy assets or long duration.", flush=True)
                     continue
                 
                 err = (
-                    f"Lambda Timeout (600s) after all retries. The video is too complex or long for the current {frames_per_lambda}f chunks. "
-                    "ACTION: Increase Lambda Timeout to 900s in AWS Console, reduce video length, or simplify assets."
+                    f"Lambda Timeout (900s) after all retries. The video is too complex or long for the current {frames_per_lambda}f chunks. "
+                    "ACTION: Reduce video length or simplify assets."
                 )
                 print(f"\n  {err}", flush=True)
                 return None, err
