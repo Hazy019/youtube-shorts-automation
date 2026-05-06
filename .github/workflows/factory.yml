@@ -9,7 +9,7 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
