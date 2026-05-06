@@ -57,10 +57,24 @@ def get_authenticated_service(token_name='token_youtube.json'):
     
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                print(f"  Token for {token_name} expired. Attempting refresh...")
+                creds.refresh(Request())
+                print(f"  Successfully refreshed token for {token_name}")
+            except Exception as e:
+                print(f"  FAILED to refresh token for {token_name}: {e}")
+                if os.getenv("GITHUB_ACTIONS") == "true":
+                    error_msg = f"CRITICAL: YouTube Token {token_name} refresh failed: {e}. Run tools/update_tokens.py locally and update GitHub Secrets!"
+                    ping_error(error_msg, "YouTube Auth")
+                    raise Exception(error_msg)
         else:
+            if not creds:
+                print(f"  No credentials found for {token_name}")
+            elif not creds.refresh_token:
+                print(f"  Credentials for {token_name} have NO REFRESH TOKEN.")
+            
             if os.getenv("GITHUB_ACTIONS") == "true":
-                error_msg = f"CRITICAL: YouTube Token {token_name} expired. Run tools/update_tokens.py locally and update GitHub Secrets!"
+                error_msg = f"CRITICAL: YouTube Token {token_name} invalid/expired and cannot refresh. Run tools/update_tokens.py locally and update GitHub Secrets!"
                 ping_error(error_msg, "YouTube Auth")
                 raise Exception(error_msg)
             flow = InstalledAppFlow.from_client_secrets_file('client_secrets.json', SCOPES)

@@ -52,7 +52,11 @@ def force_refresh_tokens():
         print(f"Select the CORRECT Google account for {yt_file}!")
         
         flow = InstalledAppFlow.from_client_secrets_file('client_secrets.json', SCOPES)
-        creds = flow.run_local_server(port=0)
+        creds = flow.run_local_server(
+            port=0, 
+            access_type='offline', 
+            prompt='consent'
+        )
 
         # Drive token is shared or unique? Usually shared Drive, but let's update it anyway
         with open(drive_file, 'w') as f:
