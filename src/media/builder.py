@@ -14,11 +14,11 @@ ROOT CAUSE OF STITCHER TIMEOUT (FIXED HERE):
           Well inside the 600s Lambda timeout.
 
 AUDIO VOLUMES (tuned down — previous values were too loud):
-    SFX hook:  0.55 → 0.28   (boom at segment 0)
-    SFX CTA:   0.45 → 0.22   (riser at last segment)
-    SFX mid:   0.35 → 0.18   (all other segments)
-    BGM gaming: 0.18 → 0.10
-    BGM general: 0.12 → 0.07
+    SFX hook:   0.20 → 0.18   (boom at segment 0)
+    SFX CTA:    0.20 → 0.18   (riser at last segment)
+    SFX mid:    0.15 → 0.13   (all other segments)
+    BGM gaming: 0.10
+    BGM general: 0.07
     These levels keep voiceover dominant and prevent audio clipping.
 """
 import os
