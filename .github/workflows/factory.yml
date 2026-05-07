@@ -9,7 +9,7 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -28,8 +28,8 @@ jobs:
       - name: Recreate Auth Tokens
         env:
           DRIVE_TOKEN:    ${{ secrets.DRIVE_TOKEN_JSON }}
-          YOUTUBE_TOKEN_HAZY: ${{ secrets.YOUTUBE_TOKEN_HAZY }}
-          YOUTUBE_TOKEN_US:   ${{ secrets.YOUTUBE_TOKEN_US }}
+          YOUTUBE_TOKEN_HAZY: ${{ secrets.TOKEN_YOUTUBE_HAZY }}
+          YOUTUBE_TOKEN_US:   ${{ secrets.TOKEN_YOUTUBE_US }}
           CLIENT_SECRETS: ${{ secrets.CLIENT_SECRETS_JSON }}
           IG_SESSION:     ${{ secrets.IG_SESSION_JSON }}
         run: |
