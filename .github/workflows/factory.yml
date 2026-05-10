@@ -64,6 +64,11 @@ jobs:
           echo "WEBHOOK_INSIGHTS=${{ secrets.WEBHOOK_INSIGHTS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
           echo "TIKTOK_COOKIES_JSON=${{ secrets.TIKTOK_COOKIES_JSON }}" >> .env
           echo "TIKTOK_COOKIES_TXT=${{ secrets.TIKTOK_COOKIES_TXT }}" >> .env
+          echo "META_PAGE_ACCESS_TOKEN=${{ secrets.META_PAGE_ACCESS_TOKEN }}" >> .env
+          echo "META_PAGE_ID=${{ secrets.META_PAGE_ID }}" >> .env
+          echo "META_INSTAGRAM_ID=${{ secrets.META_INSTAGRAM_ID }}" >> .env
+          echo "SCIENCE_BROLL_FOLDER_ID=${{ secrets.SCIENCE_BROLL_FOLDER_ID }}" >> .env
+          echo "HISTORY_BROLL_FOLDER_ID=${{ secrets.HISTORY_BROLL_FOLDER_ID }}" >> .env
           echo "FUNCTION_NAME=${{ secrets.FUNCTION_NAME }}" >> .env
           echo "GITHUB_ACTIONS=true" >> .env
 

@@ -71,22 +71,17 @@ def ping_render_start(title):
     _post(URL_LOGS, embed=embed)
 
 
-def ping_creator(youtube_link, tiktok_status, ig_link, title):
+def ping_creator(youtube_link, tiktok_status, fb_status, ig_status, title):
     global start_time
     duration = time.time() - start_time
     minutes  = int(duration // 60)
     seconds  = int(duration % 60)
     
-    status_emoji = "📥"
-    if tiktok_status == "QUEUED":
-        tiktok_status = "QUEUED (Local Retry)"
-        status_emoji = "📥"
-    elif tiktok_status == "SUCCESS":
-        tiktok_status = "UPLOADED"
-        status_emoji = "✅"
-    elif tiktok_status == "FAILED":
-        tiktok_status = "FAILED"
-        status_emoji = "❌"
+    def get_status_emoji(status):
+        if status == "SUCCESS" or status == "UPLOADED": return "✅"
+        if status == "FAILED": return "❌"
+        if status == "PENDING" or status == "QUEUED": return "📥"
+        return "⚪"
 
     print(f"Sending completion for: {title}")
     
@@ -96,10 +91,12 @@ def ping_creator(youtube_link, tiktok_status, ig_link, title):
         "color": 0x2ECC71, # Green
         "fields": [
             {"name": "📺 YouTube", "value": f"[Watch Video]({youtube_link})", "inline": True},
-            {"name": f"{status_emoji} TikTok", "value": f"`{tiktok_status}`", "inline": True},
+            {"name": f"{get_status_emoji(tiktok_status)} TikTok", "value": f"`{tiktok_status}`", "inline": True},
+            {"name": f"{get_status_emoji(fb_status)} Facebook", "value": f"`{fb_status}`", "inline": True},
+            {"name": f"{get_status_emoji(ig_status)} Instagram", "value": f"`{ig_status}`", "inline": True},
             {"name": "⏱️ Time", "value": f"`{minutes}m {seconds}s`", "inline": True}
         ],
-        "footer": {"text": "Video is ready for distribution!"}
+        "footer": {"text": "Video syndication cycle complete!"}
     }
     
     _post(URL_POSTS, content=f"<@{PING_ID}>", embed=embed)
@@ -186,6 +183,19 @@ def ping_tiktok_success(topic):
         "title": "🚀 Video Published",
         "description": f"**Topic:** `{topic}`\n\n*Available now on TikTok!*",
         "color": 0x2ECC71 # Green
+    }
+    _post(URL_QUEUE, embed=embed)
+
+def ping_meta_success(topic, platform="Meta"):
+    """Notify when a single video is successfully posted to Facebook/Instagram."""
+    print(f"Sending {platform} success notification: {topic}")
+    
+    icon = "📸" if platform == "Instagram" else "📘"
+    
+    embed = {
+        "title": f"{icon} Reel Published",
+        "description": f"**Topic:** `{topic}`\n\n*Available now on {platform}!*",
+        "color": 0x3498DB # Blue
     }
     _post(URL_QUEUE, embed=embed)
 

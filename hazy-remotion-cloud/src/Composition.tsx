@@ -51,9 +51,49 @@ const Vignette: React.FC = () => (
     style={{
       background: 'radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.60) 100%)',
       pointerEvents: 'none',
+      zIndex: 2,
     }}
   />
 );
+
+// ── CRT Scanline Overlay ──────────────────────────────────────────────────────
+const CRTOverlay: React.FC = () => (
+  <AbsoluteFill
+    style={{
+      background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
+      pointerEvents: 'none',
+      zIndex: 3,
+    }}
+  />
+);
+
+// ── Hook Overlay (Flashing TOP SECRET stamp) ──────────────────────────────────
+const HookOverlay: React.FC<{ fps: number }> = ({ fps }) => {
+  const frame = useCurrentFrame();
+  // Only show in first 2.5 seconds
+  if (frame > 2.5 * fps) return null;
+  
+  // Flashing effect (on for 10 frames, off for 5 frames)
+  const isVisible = frame % 15 < 10;
+  
+  return isVisible ? (
+    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', pointerEvents: 'none', zIndex: 4, top: '-25%' }}>
+      <div style={{
+        border: '10px solid rgba(255, 30, 30, 0.85)',
+        color: 'rgba(255, 30, 30, 0.85)',
+        fontSize: '110px',
+        fontWeight: '900',
+        fontFamily,
+        padding: '20px 40px',
+        transform: 'rotate(-8deg)',
+        textShadow: '0px 0px 15px rgba(255,0,0,0.6)',
+        boxShadow: '0 0 25px rgba(255,0,0,0.4) inset, 0 0 25px rgba(255,0,0,0.4)'
+      }}>
+        TOP SECRET
+      </div>
+    </AbsoluteFill>
+  ) : null;
+};
 
 // ── Background video clip ─────────────────────────────────────────────────────
 // loop={true}: short Pexels/Pixverse clips repeat instead of freezing on last frame.
@@ -66,8 +106,8 @@ const ZoomingVideo: React.FC<{
   renderSeed: number;
 }> = ({ url, effects, clipDuration, renderSeed }) => {
   const frame = useCurrentFrame();
-  const stepZoom = spring({ frame, fps: 30, config: { stiffness: 280, damping: 18 } });
-  const scale = effects?.zoom ? interpolate(stepZoom, [0, 1], [1, 1.08]) : 1;  // 1.12→1.08: subtler zoom
+  // Continuous cinematic Ken Burns zoom instead of a fast spring
+  const scale = effects?.zoom ? interpolate(frame, [0, clipDuration], [1.0, 1.15]) : 1;
   const shakeX = frame < 10 && random(url + renderSeed) > 0.5 ? Math.sin(frame * 2) * 8 : 0;  // 12→8px: softer shake
 
   const opacity =
@@ -159,8 +199,8 @@ const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
             key={i}
             style={{
               color: word.toUpperCase() === segment.highlight_word?.toUpperCase()
-                ? '#FFFFFF'   // highlight word = white
-                : '#FFD700',  // all other words = gold
+                ? '#FF3333'   // highlight word = RED
+                : '#FFFFFF',  // all other words = WHITE
             }}
           >
             {word}
@@ -233,7 +273,9 @@ export const MyComp: React.FC<{
 
         {/* Cinematic overlays */}
         <Vignette />
+        <CRTOverlay />
         <ProgressBar />
+        <HookOverlay fps={fps} />
 
         {/* Voiceover — always dominant at 1.0 */}
         <Audio src={audioUrl} volume={1.0} />

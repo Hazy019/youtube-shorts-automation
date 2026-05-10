@@ -52,11 +52,23 @@ check_environment()
 
 supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
+def with_supabase_retry(operation, max_attempts=3):
+    """Wrapper to handle transient network issues with Supabase."""
+    for attempt in range(max_attempts):
+        try:
+            return operation.execute()
+        except Exception as e:
+            if attempt == max_attempts - 1:
+                raise e
+            print(f"  Supabase error (attempt {attempt+1}/{max_attempts}): {e}. Retrying...")
+            time.sleep(2)
+
 from src.ai.brain import generate_full_package
 from src.ai.tts import generate_voiceover
 from src.media.assets import get_background_videos, get_sfx_urls, get_bgm_url
 from src.media.builder import make_cloud_video
 from src.api.youtube import upload_video
+from src.api.meta import MetaAPI
 from src.utils.discord import ping_creator, ping_error, ping_render_start, ping_queue
 
 def extract_s3_key(url):
@@ -113,7 +125,7 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
         topic,
         search_keyword,
         backup_keywords=viral_package.get('backup_keywords'),
-        num_clips=3,
+        num_clips=5,
         max_duration=duration
     )
     sfx_urls = get_sfx_urls(num_sfx=max(7, len(viral_package['segments'])))
@@ -180,15 +192,10 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
         if youtube_link:
             try:
                 video_id = youtube_link.split("/")[-1]
-                for attempt in range(3):
-                    try:
-                        supabase.table("videos").update({"youtube_id": video_id})\
-                            .eq("topic", full_package['topic']).execute()
-                        print(f"Supabase updated with youtube_id: {video_id}")
-                        break
-                    except Exception as e:
-                        if attempt == 2: raise e
-                        time.sleep(2)
+                with_supabase_retry(
+                    supabase.table("videos").update({"youtube_id": video_id}).eq("topic", full_package['topic'])
+                )
+                print(f"Supabase updated with youtube_id: {video_id}")
             except Exception as e:
                 print(f"Warning: Failed to save youtube_id to Supabase: {e}")
 
@@ -203,28 +210,76 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
 
             tiktok_payload = {
                 "tiktok_status":    "PENDING",
+                "facebook_status":  "PENDING",
+                "instagram_status": "PENDING",
                 "s3_video_url":     final_video_url,
                 "tiktok_description": tiktok_description
             }
 
             # Try update first (row should exist from brain.py insert)
-            result = supabase.table("videos").update(tiktok_payload).eq("topic", full_package['topic']).execute()
+            result = with_supabase_retry(
+                supabase.table("videos").update(tiktok_payload).eq("topic", full_package['topic'])
+            )
 
             # If no rows matched, the brain.py insert was skipped — insert the row now
             if not result.data:
                 print("  Row not found — inserting new Supabase record.")
-                supabase.table("videos").insert({
-                    "topic": full_package['topic'],
-                    "title": viral_package['title'],
-                    **tiktok_payload
-                }).execute()
+                with_supabase_retry(
+                    supabase.table("videos").insert({
+                        "topic": full_package['topic'],
+                        "title": viral_package['title'],
+                        **tiktok_payload
+                    })
+                )
 
             print("Supabase updated with TikTok metadata.")
         except Exception as e:
             print(f"Warning: Failed to queue for TikTok: {e}")
             tiktok_status = "FAILED"
         
-        ping_creator(youtube_link or "Upload Failed", tiktok_status, "N/A", viral_package['title'])
+        # [STEP 3/3] Meta (Facebook & Instagram) Direct Posting
+        fb_status = "PENDING"
+        ig_status = "PENDING"
+        
+        try:
+            print("\n[STEP 3/3] Initiating Meta Direct Posting...")
+            meta = MetaAPI()
+            tags = viral_package.get('tags')
+            hashtags = " ".join(f"#{t}" for t in tags) if tags else "#shorts #gaming #facts"
+            meta_description = f"{viral_package['title']}\n\n{viral_package['description'][:1400]}\n\n{hashtags}"[:2200]
+
+            # Facebook
+            try:
+                fb_id = meta.upload_facebook_reel(final_video_url, meta_description)
+                if fb_id:
+                    fb_status = "SUCCESS"
+                    with_supabase_retry(supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("topic", full_package['topic']))
+                else:
+                    fb_status = "FAILED"
+                    with_supabase_retry(supabase.table("videos").update({"facebook_status": "FAILED"}).eq("topic", full_package['topic']))
+            except Exception as e:
+                print(f"  ⚠ Facebook Direct Upload Failed: {e}")
+                fb_status = "FAILED"
+
+            # Instagram
+            try:
+                ig_id = meta.upload_instagram_reel(final_video_url, meta_description)
+                if ig_id:
+                    ig_status = "SUCCESS"
+                    with_supabase_retry(supabase.table("videos").update({"instagram_status": "SUCCESS"}).eq("topic", full_package['topic']))
+                else:
+                    ig_status = "FAILED"
+                    with_supabase_retry(supabase.table("videos").update({"instagram_status": "FAILED"}).eq("topic", full_package['topic']))
+            except Exception as e:
+                print(f"  ⚠ Instagram Direct Upload Failed: {e}")
+                ig_status = "FAILED"
+
+        except Exception as e:
+            print(f"  ⚠ Meta API Initialization Failed: {e}")
+            fb_status = "FAILED"
+            ig_status = "FAILED"
+
+        ping_creator(youtube_link or "Upload Failed", tiktok_status, fb_status, ig_status, viral_package['title'])
 
         # --- S3 ASSET CLEANUP (TASK 2) ---------------------------------------
         # We collect all temporary input keys. We do NOT delete final_video_url 
@@ -263,7 +318,7 @@ def start_factory():
         {
             "name": "Hazy Insight",
             "token": "token_youtube_hazy.json",
-            "categories": ["gaming", "general"]
+            "categories": ["general"]
         },
         {
             "name": "US Channel",

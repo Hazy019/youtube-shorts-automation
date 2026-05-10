@@ -79,6 +79,19 @@ def _get_supabase():
     return _supabase
 
 
+def with_supabase_retry(operation, max_attempts=3):
+    """Wrapper to handle transient network issues with Supabase."""
+    for attempt in range(max_attempts):
+        try:
+            return operation.execute()
+        except Exception as e:
+            if attempt == max_attempts - 1:
+                raise e
+            print(f"  Supabase error (attempt {attempt+1}/{max_attempts}): {e}. Retrying...")
+            time.sleep(2)
+
+
+
 def clean_json_response(text):
     text = text.strip()
     for prefix in ("```json", "```"):
@@ -277,6 +290,7 @@ P4. "Hidden", "secret", and "nobody knew" are only valid if the fact is genuinel
 P5. Phonetic spelling for complex terms the AI voice may mispronounce:
     "May-lay" for Melee, "Zell-duh" for Zelda, "Rok-star" for Rockstar, etc.
     Include phonetic forms directly in the voiceover text.
+P6. NO "AI SLOP". Do not write generic listicles or surface-level trivia that anyone could guess. Provide deep, specific context that shows real research. Respect the viewer's intelligence.
 
 ══════════════════════════════════════════════════════════
 PART 2 — EDGE-TTS PUNCTUATION RULES (CRITICAL FOR VOICE)
@@ -389,22 +403,23 @@ def generate_full_package(category, local_excludes=None):
         # Inject the specific user feedback for US retention
         feedback += "\nUS RETENTION STRATEGY: Inject relatable US cultural references and language. Instead of generic hooks, tailor them to American experiences and humor. Use hooks like: 'Imagine a sticky situation so bad, it shut down a whole city... no, not rush hour traffic...'"
     else:
-        theme        = "Mind-blowing science, untold history, psychology tricks, and counterintuitive facts."
+        theme        = "DEEPLY OBSCURE and MIND-BLOWING science, history, and psychology. NO SURFACE-LEVEL TRIVIA. The facts must be so niche and thoroughly researched that even experts would be surprised. DO NOT generate 'AI slop' listicles."
         examples     = (
-            "- The hidden biological secret making sleep deprivation feel like being drunk...\\n"
-            "- The forgotten historical mystery of why the Mona Lisa has no eyebrows...\\n"
-            "- The secret psychology unmasked: why lottery winners lose happiness...\\n"
-            "- The forbidden knowledge of how ancient Romans built concrete stronger than steel...\\n"
-            "- The hidden anomaly: why your brain cannot tell the difference between physical and emotional pain..."
+            "- Why a 19th-century solar storm caused telegraph machines to send messages while completely unplugged...\\n"
+            "- The classified Soviet project that accidentally created a lake so radioactive it could kill you in one hour...\\n"
+            "- The bizarre psychological condition where the brain perceives loved ones as identical imposters (Capgras delusion)...\\n"
+            "- How the CIA spent 20 million dollars training acoustic kitty spies, only for the first cat to be hit by a taxi...\\n"
+            "- The physiological reason why human tears have different crystal structures depending on the emotion that caused them..."
         )
         keyword_hint = (
-            "A SPECIFIC 2-word Pexels video search term that visually matches the topic.\\n"
+            "A STRICTLY RELEVANT 2-word Pexels video search term that visually matches the topic.\\n"
             "Space/astronomy -> 'Space Nebula'. Ocean -> 'Deep Ocean'. Brain -> 'Human Brain'.\\n"
-            "History -> 'Ancient Rome'. Biology -> 'Cell Biology'. Abstract topic -> 'Parkour'.\\n"
-            "Return ONLY the 2-word keyword. Also provide 2 backup_keywords."
+            "History -> 'Ancient Ruins'. Biology -> 'Microscope Cell'. Abstract/Tech -> 'Abstract Data'.\\n"
+            "DO NOT default to 'Parkour' or generic gameplay. The B-roll MUST visually represent the topic.\\n"
+            "Return ONLY the 2-word keyword. Also provide 2 highly specific backup_keywords."
         )
-        sfx_style    = "cinematic, atmospheric — riser and whoosh effects for mystery"
-        pace_guide   = "Build tension slowly, then drop the fact. Let voiceover breathe."
+        sfx_style    = "cinematic, atmospheric — riser, whoosh, and subtle heartbeat effects for tension"
+        pace_guide   = "Build tension slowly but keep cuts fast. Drop the fact. Let voiceover breathe slightly, but maintain momentum."
 
     forbidden_str = str(used_topics) if used_topics else "[]"
 
@@ -467,12 +482,14 @@ def generate_full_package(category, local_excludes=None):
                 if db:
                     try:
                         full_script = " ".join(s["voiceover"] for s in package["segments"])
-                        db.table("videos").insert({
-                            "topic":  package["topic"],
-                            "title":  package["title"],
-                            "script": full_script,
-                            "tiktok_status": "INITIALIZED", # Prevent auto-queuing before render
-                        }).execute()
+                        with_supabase_retry(
+                            db.table("videos").insert({
+                                "topic":  package["topic"],
+                                "title":  package["title"],
+                                "script": full_script,
+                                "tiktok_status": "INITIALIZED", # Prevent auto-queuing before render
+                            })
+                        )
                     except Exception as e:
                         print(f"  Supabase insert skipped: {e}")
 

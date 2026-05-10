@@ -267,7 +267,16 @@ def sync_drive_to_s3(folder_id, num_clips, media_type="video", max_duration=None
 
         print(f"    Uploading to S3 cloud storage...")
         key = f"{s3_prefix}{uuid.uuid4().hex}"
-        s3.upload_fileobj(final_fh, BUCKET_NAME, key, ExtraArgs={"ContentType": content_type})
+        
+        for attempt in range(3):
+            try:
+                final_fh.seek(0)
+                s3.upload_fileobj(final_fh, BUCKET_NAME, key, ExtraArgs={"ContentType": content_type})
+                break
+            except Exception as e:
+                print(f"    S3 Upload error ({attempt+1}/3): {e}")
+                if attempt == 2: raise e
+                time.sleep(2 ** attempt)
         
         # Cleanup
         if final_fh != fh:
@@ -388,11 +397,18 @@ def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
             
             try:
                 print(f"    Downloading raw b-roll from Pexels...")
-                with requests.get(cdn_url, stream=True, timeout=120) as r:
-                    r.raise_for_status()
-                    with open(temp_raw, "wb") as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
+                for dl_attempt in range(3):
+                    try:
+                        with requests.get(cdn_url, stream=True, timeout=120) as r:
+                            r.raise_for_status()
+                            with open(temp_raw, "wb") as f:
+                                for chunk in r.iter_content(chunk_size=8192):
+                                    f.write(chunk)
+                        break
+                    except Exception as e:
+                        print(f"    Download error ({dl_attempt+1}/3): {e}")
+                        if dl_attempt == 2: raise e
+                        time.sleep(2 ** dl_attempt)
                 
                 # Trim if duration provided
                 upload_path = temp_raw
@@ -403,13 +419,20 @@ def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
                 key = f"backgrounds/pexels_{video_id}_{uuid.uuid4().hex[:8]}.mp4"
                 print(f"    Uploading to S3 ({os.path.getsize(upload_path)/1024/1024:.1f}MB)...")
                 
-                with open(upload_path, "rb") as f:
-                    s3.upload_fileobj(
-                        f,
-                        BUCKET_NAME,
-                        key,
-                        ExtraArgs={"ContentType": "video/mp4"},
-                    )
+                for attempt in range(3):
+                    try:
+                        with open(upload_path, "rb") as f:
+                            s3.upload_fileobj(
+                                f,
+                                BUCKET_NAME,
+                                key,
+                                ExtraArgs={"ContentType": "video/mp4"},
+                            )
+                        break
+                    except Exception as e:
+                        print(f"    S3 Upload error ({attempt+1}/3): {e}")
+                        if attempt == 2: raise e
+                        time.sleep(2 ** attempt)
 
                 presigned = s3.generate_presigned_url(
                     "get_object",
@@ -500,18 +523,15 @@ def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3, max
     if len(urls) >= num_clips:
         return urls[:num_clips]
 
-    # Route 5: Last resort → Randomize Parkour & Pexels
+    # Route 5: Last resort -> Randomize Premium Pexels Collections
     needed = num_clips - len(urls)
     if needed > 0:
-        print(f"  Flow exhausted. Using randomized last resort...")
-        # Focus on Parkour only as a 50/50 fallback if not gaming
-        if random.random() < 0.5:
-             print("  Selected Parkour Drive as last resort.")
-             more = sync_drive_to_s3(PARKOUR_FOLDER_ID, needed, "video", max_duration=max_duration)
-        else:
-             fallback_kw = random.choice(FALLBACK_NATURE)
-             print(f"  Selected Pexels Nature ({fallback_kw}) as last resort.")
-             more = _fetch_pexels(fallback_kw, needed, max_duration=max_duration)
+        print(f"  Flow exhausted. Using premium Pexels last resort...")
+        # Combine fallback pools for maximum premium variety
+        premium_fallbacks = FALLBACK_NATURE + FALLBACK_SCIENCE + FALLBACK_HISTORY
+        fallback_kw = random.choice(premium_fallbacks)
+        print(f"  Selected Pexels Premium ({fallback_kw}) as last resort.")
+        more = _fetch_pexels(fallback_kw, needed, max_duration=max_duration)
         urls.extend(more)
 
     return urls[:num_clips]

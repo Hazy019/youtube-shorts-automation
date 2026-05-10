@@ -1,17 +1,11 @@
 """
 builder.py — AWS Lambda / Remotion Render Orchestrator v12
 -----------------------------------------------------------
-ROOT CAUSE OF STITCHER TIMEOUT (FIXED HERE):
-
-    OLD:  frames_per_lambda = 300
-          90-second video = 2715 frames ÷ 300 = 10 chunks
-          Stitcher Lambda must wait for all 10 chunks, then stitch.
-          Stitcher has a 600s hard limit. With 10 chunks: ALWAYS TIMES OUT.
-
-    FIX:  frames_per_lambda = total_frames  (render entire video as 1 chunk)
-          10 chunks → 1 chunk.  Stitcher phase is skipped entirely.
-          The single render Lambda runs the whole video in one shot ~120-180s.
-          Well inside the 600s Lambda timeout.
+CHUNK STRATEGY & LAMBDA LIMITS:
+    - Maintain frames_per_lambda = 300 to ensure parallel rendering speed.
+    - Single-shot rendering is NOT recommended for videos > 30s.
+    - If chunk count gets too high, simplify assets/effects instead of skipping chunking.
+    - All videos chunk safely up to 300 frames.
 
 AUDIO VOLUMES (tuned down — previous values were too loud):
     SFX hook:   0.20 → 0.18   (boom at segment 0)
@@ -86,7 +80,14 @@ def _do_render(client, params):
         return None, "render_object_is_none"
 
     consecutive_errors = 0
+    poll_start = time.time()
+    
     while True:
+        # Failsafe: Hard timeout of 960 seconds (Lambda 900s limit + buffer)
+        if time.time() - poll_start > 960:
+            print("\n  AWS LAMBDA FATAL: Polling timeout exceeded. The render function hung.", flush=True)
+            return None, "polling_timeout_exceeded_960s"
+
         try:
             status = client.get_render_progress(
                 render_id=render.render_id,

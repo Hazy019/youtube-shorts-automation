@@ -135,10 +135,16 @@ def upload_video(video_path, title, description, category="gaming", tags=None, t
             
             return video_link
         except googleapiclient.errors.HttpError as e:
-            # Usually strict HTTP auth errors
+            err_str = str(e).lower()
+            if "quotaexceeded" in err_str:
+                msg = f"CRITICAL: YouTube Quota Exceeded for {token_name}. Failing fast."
+                print(f"\n{msg}")
+                ping_error(msg, "YouTube API")
+                return False
+                
             print(f"YouTube Upload HTTP Error: {e}")
             if attempt == 3: return False
-            time.sleep(2 ** attempt * 5)
+            time.sleep(2 ** (attempt + 1) * 5)
         except Exception as e:
             # Network drops (socket.timeout, Connection reset, etc)
             print(f"YouTube Upload Network Drop ({attempt+1}/4): {e}")
