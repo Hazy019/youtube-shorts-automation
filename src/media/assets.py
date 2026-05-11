@@ -41,12 +41,10 @@ def _get_supabase():
     return _supabase
 
 BUCKET_NAME        = os.getenv("BUCKET_NAME")
-GAMING_BGM_FOLDER  = os.getenv("GAMING_BGM_FOLDER_ID")
 GENERAL_BGM_FOLDER = os.getenv("GENERAL_BGM_FOLDER_ID")
 SFX_FOLDER         = os.getenv("SFX_FOLDER_ID")
 HISTORY_BROLL_FOLDER_ID = os.getenv("HISTORY_BROLL_FOLDER_ID")
 SCIENCE_BROLL_FOLDER_ID = os.getenv("SCIENCE_BROLL_FOLDER_ID")
-PARKOUR_FOLDER_ID = os.getenv("PARKOUR_FOLDER_ID")
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
@@ -285,7 +283,7 @@ def sync_drive_to_s3(folder_id, num_clips, media_type="video", max_duration=None
             if os.path.exists(f): os.remove(f)
 
         url = s3.generate_presigned_url(
-            "get_object", Params={"Bucket": BUCKET_NAME, "Key": key}, ExpiresIn=7200
+            "get_object", Params={"Bucket": BUCKET_NAME, "Key": key}, ExpiresIn=172800
         )
         urls.append(url)
 
@@ -437,7 +435,7 @@ def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
                 presigned = s3.generate_presigned_url(
                     "get_object",
                     Params={"Bucket": BUCKET_NAME, "Key": key},
-                    ExpiresIn=7200,
+                    ExpiresIn=172800,  # 48h — safe window for TikTok manual uploads
                 )
                 urls.append(presigned)
                 print(f"    ✓ Uploaded to S3 → Lambda will fetch at wire speed.")
@@ -454,26 +452,149 @@ def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
         return []
 
 
+def _fetch_pixabay(keyword, num_clips, max_duration=None):
+    """
+    Fetch Pixabay videos for a keyword and mirror them to S3.
+    Pixabay is a fallback for Pexels.
+    """
+    api_key = os.getenv("PIXABAY_API_KEY")
+    if not api_key:
+        return []
+
+    # Pixabay vertical orientation uses orientation=vertical
+    base_url = (
+        f"https://pixabay.com/api/videos/"
+        f"?key={api_key}&q={keyword}&video_type=film&orientation=vertical"
+    )
+
+    try:
+        resp = requests.get(base_url, timeout=15).json()
+        videos = resp.get("hits", [])
+
+        if not videos:
+            return []
+
+        # Deduplication using Supabase
+        db = _get_supabase()
+        if db:
+            try:
+                used = db.table("used_clips").select("file_id").execute()
+                used_ids = {str(c["file_id"]) for c in used.data}
+                fresh_videos = [v for v in videos if str(v.get("id")) not in used_ids]
+                if not fresh_videos:
+                    fresh_videos = videos
+                videos = fresh_videos
+            except Exception as e:
+                print(f"  Pixabay dedup warning: {e}")
+
+        random.shuffle(videos)
+
+        s3 = boto3.client(
+            "s3",
+            region_name="us-east-1",
+            config=Config(region_name="us-east-1", s3={"addressing_style": "virtual"}),
+        )
+
+        urls = []
+        for video in videos[:num_clips]:
+            if db:
+                try:
+                    db.table("used_clips").insert({
+                        "file_id": str(video.get("id")),
+                        "file_name": f"pixabay_{video.get('id')}",
+                        "media_type": "pixabay_video"
+                    }).execute()
+                except Exception:
+                    pass
+
+            # Pixabay provides multiple sizes in 'videos' dict
+            v_data = video.get("videos", {})
+            # Prefer large/medium but ≤ 1080p
+            chosen_data = v_data.get("large") or v_data.get("medium") or v_data.get("small") or v_data.get("tiny")
+            
+            if not chosen_data:
+                continue
+
+            cdn_url = chosen_data["url"]
+            video_id = video.get("id", uuid.uuid4().hex)
+            print(f"  Pixabay → S3: [{keyword}] video {video_id}")
+
+            temp_raw = f"temp_raw_{uuid.uuid4().hex}.mp4"
+            temp_trimmed = f"temp_trimmed_{uuid.uuid4().hex}.mp4"
+            
+            try:
+                print(f"    Downloading raw b-roll from Pixabay...")
+                for dl_attempt in range(3):
+                    try:
+                        with requests.get(cdn_url, stream=True, timeout=120) as r:
+                            r.raise_for_status()
+                            with open(temp_raw, "wb") as f:
+                                for chunk in r.iter_content(chunk_size=8192):
+                                    f.write(chunk)
+                        break
+                    except Exception as e:
+                        print(f"    Download error ({dl_attempt+1}/3): {e}")
+                        if dl_attempt == 2: raise e
+                        time.sleep(2 ** dl_attempt)
+                
+                upload_path = temp_raw
+                if max_duration:
+                    if trim_video_ffmpeg(temp_raw, temp_trimmed, max_duration):
+                        upload_path = temp_trimmed
+                
+                key = f"backgrounds/pixabay_{video_id}_{uuid.uuid4().hex[:8]}.mp4"
+                print(f"    Uploading to S3 ({os.path.getsize(upload_path)/1024/1024:.1f}MB)...")
+                
+                for attempt in range(3):
+                    try:
+                        with open(upload_path, "rb") as f:
+                            s3.upload_fileobj(
+                                f,
+                                BUCKET_NAME,
+                                key,
+                                ExtraArgs={"ContentType": "video/mp4"},
+                            )
+                        break
+                    except Exception as e:
+                        print(f"    S3 Upload error ({attempt+1}/3): {e}")
+                        if attempt == 2: raise e
+                        time.sleep(2 ** attempt)
+
+                presigned = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": BUCKET_NAME, "Key": key},
+                    ExpiresIn=172800,  # 48h — safe window for TikTok manual uploads
+                )
+                urls.append(presigned)
+                print(f"    ✓ Uploaded to S3.")
+            except Exception as e:
+                print(f"  Pixabay S3 upload failed for video {video_id}: {e}")
+            finally:
+                for f in [temp_raw, temp_trimmed]:
+                    if os.path.exists(f): os.remove(f)
+
+        return urls
+
+    except Exception as e:
+        print(f"Pixabay error for '{keyword}': {e}")
+        return []
+
+
 def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3, max_duration=None):
     """
     Route b-roll based on topic + Gemini keywords.
-    
-    HIERARCHY:
-    1. Gaming Topic -> Parkour Drive
-    2. Primary Keyword (random page 1-4)
-    3. AI Backup Keywords (if primary thin)
-    4. Premium AI Drive Folders (Science/History)
-    5. Categorized Fallback Pool (if still thin)
-    6. Randomized Last Resort (Parkour/Pexels)
-    """
-    num_clips = min(num_clips, 3)
-    topic_lower = topic.lower()
 
-    # Route 1: Gaming → Parkour Drive
-    gaming_keywords = ["game", "gaming", "minecraft", "roblox", "gta", "elden", "doom", "speedrun", "speedrunning"]
-    if any(k in topic_lower for k in gaming_keywords):
-        print(f"  Gaming topic detected. Using Parkour Drive.")
-        return sync_drive_to_s3(PARKOUR_FOLDER_ID, num_clips, "video", max_duration=max_duration)
+    HIERARCHY (Hazy Insight — general & us-centric only):
+    1. Primary Pexels keyword (AI-generated, page 1-5)
+    2. Pixabay fallback (same keyword, fills remaining clips)
+    3. AI Backup Keywords (Pexels first, then Pixabay)
+    4. Premium AI Drive Folders (Science/History)
+    5. Categorized Fallback Pool
+    6. Randomized Premium Last Resort
+    """
+    # Cap at 10 — more clips = faster visual cuts for better retention
+    num_clips = min(num_clips, 10)
+    topic_lower = topic.lower()
 
     # Route 2: Primary Pexels keyword
     urls = _fetch_pexels(keyword, num_clips, max_duration=max_duration)
@@ -481,13 +602,31 @@ def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3, max
         print(f"  Pexels primary hit: {keyword}")
         return urls
 
+    # Route 2b: Pixabay fallback for primary keyword
+    if len(urls) < num_clips:
+        needed = num_clips - len(urls)
+        print(f"  Pexels thin ({len(urls)}/{num_clips}). Trying Pixabay for: {keyword}")
+        pixabay_urls = _fetch_pixabay(keyword, needed, max_duration=max_duration)
+        urls.extend(pixabay_urls)
+        if len(urls) >= num_clips:
+            return urls[:num_clips]
+
     # Route 3: AI backup keywords
     if backup_keywords:
         for bk in backup_keywords:
-            more = _fetch_pexels(bk, num_clips - len(urls), max_duration=max_duration)
+            remaining = num_clips - len(urls)
+            # Try Pexels first for backup
+            more = _fetch_pexels(bk, remaining, max_duration=max_duration)
             urls.extend(more)
+            
+            # If still need more, try Pixabay for this backup keyword
+            if len(urls) < num_clips:
+                needed = num_clips - len(urls)
+                more_pix = _fetch_pixabay(bk, needed, max_duration=max_duration)
+                urls.extend(more_pix)
+
             if len(urls) >= num_clips:
-                print(f"  Pexels backup hit: {bk}")
+                print(f"  Pexels/Pixabay backup hit: {bk}")
                 return urls[:num_clips]
 
     # Route 4: Premium AI Drive Folders
@@ -544,7 +683,10 @@ def get_sfx_urls(num_sfx=7):
 
 
 def get_bgm_url(category="general"):
-    folder = GAMING_BGM_FOLDER if category == "gaming" else GENERAL_BGM_FOLDER
+    """
+    Route BGM. All categories use the GENERAL_BGM_FOLDER.
+    """
+    folder = GENERAL_BGM_FOLDER
     if not folder:
         print(f"No BGM folder for '{category}'. Skipping.")
         return None

@@ -204,7 +204,7 @@ _JSON_SCHEMA_EXAMPLE = """{
       "start": 0.0,
       "end": 2.5,
       "text": "THE HOOK",
-      "voiceover": "Nobody noticed... for years... a secret was hidden right in front of us.",
+      "voiceover": "[WRITE A SHOCKING 2-SECOND HOOK SPECIFIC TO THE TOPIC HERE. NEVER REPEAT OR REUSE OLD HOOKS.]",
       "text_effect": "pop",
       "position": "top",
       "highlight_word": "SECRET"
@@ -213,7 +213,7 @@ _JSON_SCHEMA_EXAMPLE = """{
       "start": 2.5,
       "end": 7.0,
       "text": "STAY WATCHING",
-      "voiceover": "Stay till the end... because the US government actually tried to cover this up.",
+      "voiceover": "[WRITE A RETENTION LINE HERE CONNECTING THE HOOK TO THE MAIN STORY. DO NOT USE GENERIC PHRASES.]",
       "text_effect": "typewriter",
       "position": "center",
       "highlight_word": "WATCHING"
@@ -222,7 +222,7 @@ _JSON_SCHEMA_EXAMPLE = """{
       "start": 7.0,
       "end": 55.0,
       "text": "THE EVIDENCE",
-      "voiceover": "The data shows that in 1995... [Details of the fact]... and honestly, that's insane.",
+      "voiceover": "[WRITE THE MAIN STORY/FACTS HERE. USE PUNCTUATION FOR BREATHING. BE HIGHLY SPECIFIC.]",
       "text_effect": "glitch",
       "position": "center",
       "highlight_word": "EVIDENCE"
@@ -231,7 +231,7 @@ _JSON_SCHEMA_EXAMPLE = """{
       "start": 55.0,
       "end": 59.0,
       "text": "FOLLOW NOW",
-      "voiceover": "Drop a comment if this broke your brain. Follow for more secrets.",
+      "voiceover": "[WRITE A QUICK OUTRO OR CALL TO ACTION RELEVANT TO THE TOPIC HERE.]",
       "text_effect": "pop",
       "position": "bottom",
       "highlight_word": "FOLLOW"
@@ -263,7 +263,7 @@ CATEGORY: {category.upper()}
 THEME: {theme}
 SFX STYLE: {sfx_style}
 PACING: {pace_guide}
-TARGET: EXACTLY 58-59 second video for YouTube Shorts + TikTok. 
+TARGET: EXACTLY 45-50 second video for YouTube Shorts + TikTok. 
 AUDIENCE: US-based (use US slang, US cultural references, and American-English).
 
 ANALYTICS FEEDBACK:
@@ -322,9 +322,9 @@ R3.  description: 400+ words. Conversational opener first, then SEO. 3+ hashtags
      ROTATE openers every video — never use the same opener twice.
 R4.  tags: exactly 15 lowercase strings. At least 4 must be colloquial.
 R5.  segments: EXACTLY 5 to 7 total. (Rejection if less than 5).
-R6.  TOTAL WORD COUNT LIMIT: 130 to 140 words total across all segments.
+R6.  TOTAL WORD COUNT LIMIT: 100 to 115 words total across all segments.
      Duration calculation: Each ellipsis "..." adds 0.6s of silence. 
-     Your target is EXACTLY 58.5 seconds. Do not exceed 140 words.
+     Your target is EXACTLY 48.0 seconds. Do not exceed 115 words.
      Match start/end timing exactly. Each segment.end must equal next segment.start.
 R7.  text (on-screen caption): 1-3 WORDS ONLY. Never a full sentence.
 R8.  voiceover and text say DIFFERENT things. Caption = punchline/label. Voiceover = explanation.
@@ -335,8 +335,13 @@ R12. SEGMENT 0 (Hook):
      - end <= 3.0s
      - text_effect = "pop", position = "top"
      - Voiceover max 15 words with an ellipsis mid-sentence for breath
-     - MUST use one of these proven openers: "Nobody noticed...", "For years...",
-       "Hidden inside...", "This should be impossible...", "Wait, actually..."
+     - MUST use ONE of these proven openers — ROTATE every video, never repeat:
+       "Nobody noticed...", "For years...", "Hidden inside...",
+       "This should be impossible...", "Wait, actually...",
+       "They never told you...", "It happened overnight...",
+       "Most people get this wrong...", "The government actually...",
+       "Science just confirmed...", "Right before it disappeared...",
+       "Everybody missed this..."
 R13. SEGMENT 1 (Tease):
      - text_effect = "typewriter", position = "center"
      - Must contain "stay till the end" or equivalent retention phrase
@@ -375,19 +380,7 @@ def generate_full_package(category, local_excludes=None):
     used_topics = used_topics[:20]
     feedback     = fetch_analytics_feedback()
 
-    if category == "gaming":
-        theme        = "Fascinating video game lore, hidden easter eggs, speedrunning records, mind-blowing mechanics, and developer secrets across all major titles."
-        examples     = (
-            "- The forbidden developer message secretly encoded inside Doom...\\n"
-            "- The hidden developer room in Minecraft they never told you about...\\n"
-            "- Why developers unmasked a hidden alien under the ice in GTA V...\\n"
-            "- The hidden biological secret making Minecraft Endermen hate eye contact...\\n"
-            "- The impossible Super Mario 64 glitch that took 20 years to solve..."
-        )
-        keyword_hint = 'Return ONLY the string "Parkour". Gaming b-roll always uses parkour footage.'
-        sfx_style    = "energetic, punchy — glitch and pop effects aggressively"
-        pace_guide   = "Fast cuts. Short punchy sentences. Hook creates instant disbelief."
-    elif category == "us-centric":
+    if category == "us-centric":
         theme        = "High-energy US-centric facts, cultural anomalies, and American history with relatable humor and slang."
         examples     = (
             "- The secret physics of the Great Molasses Flood that shut down Boston...\\n"
@@ -396,7 +389,7 @@ def generate_full_package(category, local_excludes=None):
             "- The American-centric hook: 'Imagine a sticky situation so bad, it shut down a whole city...'\\n"
             "- The untold story of why US milk cartons used to have missing person photos..."
         )
-        keyword_hint = 'Return a 2-word Pexels keyword matching a US city, landmark, or cultural item (e.g., "New York", "American Flag").'
+        keyword_hint = 'Return a 2-3 word Pexels/Pixabay search term matching a US city, landmark, cultural item, or historical setting (e.g., "Times Square Night", "American Flag", "Capitol Building", "New Orleans Jazz"). Be specific — avoid generic terms.'
         sfx_style    = "punchy, urban, modern US style — pop and whoosh"
         pace_guide   = "High energy. Use US slang and cultural references. Hook must be relatable to American experiences."
         

@@ -74,7 +74,9 @@ def run_weekly_analytics():
             .execute()
         )
     except Exception as e:
-        print(f"Supabase fetch error: {e}")
+        err = f"Supabase fetch error in analytics: {e}"
+        print(err)
+        ping_error(err, "Analytics Supabase")
         return
 
     for video in resp.data:
@@ -157,6 +159,7 @@ def run_weekly_analytics():
         ping_error(err_msg, "Analytics AI")
 
     print("\nWeekly Analytics Sync Complete!")
+    ping_analytics_insight("\u2705 Weekly analytics sync complete. Dashboard updated in Supabase.")
 
 
 if __name__ == "__main__":

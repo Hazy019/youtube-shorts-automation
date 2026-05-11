@@ -45,22 +45,28 @@ ELEVENLABS_VOICE_IDS = [
     "TX3LPaxmHKxFdv7VOQHJ",   # Liam — energetic, good for hooks
 ]
 
-# ── Edge-TTS voice pool (anti-detection rotation) ────────────────────────────
-# ChristopherNeural is excluded — it is the most recognizable AI voice.
-# GuyNeural and AndrewNeural are significantly less flagged.
+# ── Edge-TTS voice pool (best-sounding, anti-detection) ─────────────────────
+# REMOVED: GuyNeural — most recognizable/robotic AI voice on YouTube. Huge mistake.
+# ADDED:   SteffanNeural, DavisNeural, TonyNeural, JasonNeural — sound closest to human.
+#
+# Tuning philosophy:
+#   Rate:  Slower speech = sounds more human. AI defaults are too fast.
+#   Pitch: Slightly lower = warmer, less sharp/synthetic.
 EDGE_TTS_VOICES = [
-    {"name": "en-US-AndrewNeural",  "rate": "+2%",  "pitch": "-2Hz"},  # warm, natural
-    {"name": "en-US-GuyNeural",     "rate": "+3%",  "pitch": "-1Hz"},  # neutral, clear
-    {"name": "en-US-BrianMultilingualNeural", "rate": "+0%", "pitch": "+0Hz"},  # deliberate
-    {"name": "en-GB-RyanNeural",    "rate": "+5%",  "pitch": "-2Hz"},  # British — stands out
-    {"name": "en-US-EricNeural",    "rate": "+2%",  "pitch": "-1Hz"},  # calm, confident
+    {"name": "en-US-SteffanNeural",  "rate": "-5%",  "pitch": "-3Hz"},  # BEST: deep, warm storyteller
+    {"name": "en-US-DavisNeural",    "rate": "-3%",  "pitch": "-4Hz"},  # authoritative, dramatic
+    {"name": "en-US-TonyNeural",     "rate": "-5%",  "pitch": "-2Hz"},  # conversational, natural
+    {"name": "en-US-JasonNeural",    "rate": "+2%",  "pitch": "-1Hz"},  # energetic, punchy — gaming
+    {"name": "en-US-AndrewNeural",   "rate": "-3%",  "pitch": "-2Hz"},  # warm backup
+    {"name": "en-US-BrianMultilingualNeural", "rate": "-5%", "pitch": "-2Hz"},  # deliberate, clear
 ]
 
 
-async def _generate_edge_tts_async(text: str, output_file: str, voice_config: dict):
+async def _generate_edge_tts_async(text: str, output_file: str, voice_config: dict) -> list:
     """
-    Generate Edge-TTS audio with specific voice, rate, and pitch.
-    The voice_config dict controls rate and pitch for human-sounding output.
+    Generate Edge-TTS audio using streaming mode.
+    Captures WordBoundary events to get precise per-word timestamps.
+    Returns: list of {word, start, duration} in seconds — powers karaoke captions.
     """
     communicate = edge_tts.Communicate(
         text,
@@ -68,21 +74,34 @@ async def _generate_edge_tts_async(text: str, output_file: str, voice_config: di
         rate=voice_config["rate"],
         pitch=voice_config["pitch"],
     )
-    await communicate.save(output_file)
+    word_boundaries = []
+    with open(output_file, "wb") as audio_file:
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_file.write(chunk["data"])
+            elif chunk["type"] == "WordBoundary":
+                # Edge-TTS offset is in 100-nanosecond ticks → convert to seconds
+                word_boundaries.append({
+                    "word":     chunk["text"],
+                    "start":    round(chunk["offset"]   / 10_000_000, 3),
+                    "duration": round(chunk["duration"] / 10_000_000, 3),
+                })
+    return word_boundaries
 
 
 def _pick_edge_voice(category: str) -> dict:
     """
-    Pick an Edge-TTS voice appropriate for the category.
-    Rotates to prevent pattern-matching across videos.
-    Gaming: prefer energetic voices. General: prefer warm/deliberate voices.
+    Pick the best Edge-TTS voice for the category.
+    Prioritizes the most human-sounding voices per content type.
+    Gaming: energetic (Jason). General/Science: deep storytelling (Steffan, Davis).
+    US-Centric: dramatic and authoritative (Davis, Tony).
     """
-    if category == "gaming":
-        # Guy and Andrew work well for energetic gaming content
-        pool = [v for v in EDGE_TTS_VOICES if "Guy" in v["name"] or "Andrew" in v["name"] or "Ryan" in v["name"]]
+    if category == "us-centric":
+        # Davis is authoritative and dramatic — matches the Breaking News style
+        pool = [v for v in EDGE_TTS_VOICES if "Davis" in v["name"] or "Tony" in v["name"]]
     else:
-        # Eric and Andrew for calm factual content
-        pool = [v for v in EDGE_TTS_VOICES if "Eric" in v["name"] or "Andrew" in v["name"]]
+        # Steffan is the best for warm, believable fact-based storytelling
+        pool = [v for v in EDGE_TTS_VOICES if "Steffan" in v["name"] or "Tony" in v["name"] or "Brian" in v["name"]]
 
     return random.choice(pool if pool else EDGE_TTS_VOICES)
 
@@ -128,31 +147,30 @@ def generate_voiceover(script_text: str, category: str = "general"):
     """
     Generate a voiceover MP3, upload to S3, and return a presigned URL.
 
-    Returns: (url: str | None, duration_seconds: float, error: str | None)
-    Always unpack all three values.
-
-    Tries ElevenLabs first (better quality, harder to detect).
-    Falls back to Edge-TTS with anti-detection voice selection.
+    Returns: (url: str | None, duration_seconds: float, word_timestamps: list, error: str | None)
+    word_timestamps is a list of {word, start, duration} dicts for karaoke captions.
+    Always unpack all four values.
     """
     api_key    = os.getenv("ELEVENLABS_API_KEY")
     local_file = f"temp_voice_{int(time.time())}.mp3"
     use_fallback = False
+    word_timestamps = []  # populated by Edge-TTS WordBoundary events
 
     # ── Primary: Edge-TTS (Free & Unlimited) ───────────────────────────
     voice_config = _pick_edge_voice(category)
-    # High-energy American storytelling tuning: +5% rate, +1Hz pitch if not already set
-    if category == "us-centric":
-        voice_config["rate"] = "+5%"
-        voice_config["pitch"] = "+1Hz"
-        
+    # Let the voice pool handle pacing — do NOT override rate here.
+    # The tuned pool uses -3% to -5% rate (slower = more human).
     print(f"  Edge-TTS Primary: {voice_config['name']} rate={voice_config['rate']} pitch={voice_config['pitch']}")
 
     tts_error = None
 
     def _run_tts():
-        nonlocal tts_error
+        nonlocal tts_error, word_timestamps
         try:
-            asyncio.run(_generate_edge_tts_async(script_text, local_file, voice_config))
+            word_timestamps = asyncio.run(
+                _generate_edge_tts_async(script_text, local_file, voice_config)
+            )
+            print(f"  Edge-TTS: captured {len(word_timestamps)} word timestamps for karaoke.")
         except Exception as e:
             tts_error = e
 
@@ -174,7 +192,7 @@ def generate_voiceover(script_text: str, category: str = "general"):
         print("  ElevenLabs fallback initiated...")
         usage = check_elevenlabs_quota(api_key)
         if usage >= 0.98:
-            return None, 0, "All TTS options exhausted (ElevenLabs quota full)"
+            return None, 0, [], "All TTS options exhausted (ElevenLabs quota full)"
         
         voice_id = random.choice(ELEVENLABS_VOICE_IDS)
         url      = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -200,13 +218,13 @@ def generate_voiceover(script_text: str, category: str = "general"):
                     f.write(resp.content)
                 print(f"  ElevenLabs Fallback: voice_id={voice_id[:8]}... OK")
             else:
-                return None, 0, f"ElevenLabs fallback failed ({resp.status_code}): {resp.text[:100]}"
+                return None, 0, [], f"ElevenLabs fallback failed ({resp.status_code}): {resp.text[:100]}"
         except requests.RequestException as e:
-            return None, 0, f"ElevenLabs fallback network error: {e}"
+            return None, 0, [], f"ElevenLabs fallback network error: {e}"
 
     # ── Validate file exists ──────────────────────────────────────────────
     if not os.path.exists(local_file) or os.path.getsize(local_file) < 1000:
-        return None, 0, "Audio file missing or too small after TTS generation"
+        return None, 0, [], "Audio file missing or too small after TTS generation"
 
     # ── Normalize audio ───────────────────────────────────────────────────
     _normalize_audio(local_file)
@@ -218,7 +236,7 @@ def generate_voiceover(script_text: str, category: str = "general"):
         print(f"  Audio duration: {duration_seconds:.1f}s")
     except Exception as e:
         os.remove(local_file)
-        return None, 0, f"Failed to read audio duration: {e}"
+        return None, 0, [], f"Failed to read audio duration: {e}"
 
     # ── Upload to S3 ──────────────────────────────────────────────────────
     try:
@@ -228,13 +246,13 @@ def generate_voiceover(script_text: str, category: str = "general"):
         presigned_url = s3.generate_presigned_url(
             "get_object",
             Params={"Bucket": BUCKET_NAME, "Key": s3_key},
-            ExpiresIn=7200,
+            ExpiresIn=172800,  # 48h — consistent with all other S3 URLs
         )
     except Exception as e:
         os.remove(local_file)
-        return None, 0, f"S3 upload failed: {e}"
+        return None, 0, [], f"S3 upload failed: {e}"
     finally:
         if os.path.exists(local_file):
             os.remove(local_file)
 
-    return presigned_url, duration_seconds, None
+    return presigned_url, duration_seconds, word_timestamps, None

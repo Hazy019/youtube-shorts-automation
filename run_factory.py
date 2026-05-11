@@ -6,6 +6,7 @@ import random
 import traceback
 import boto3
 from urllib.parse import urlparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
@@ -37,14 +38,32 @@ def check_environment():
     """Verify critical environment variables are present before starting."""
     required = [
         "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_KEY", 
-        "BUCKET_NAME", "SERVE_URL", "PARKOUR_FOLDER_ID",
+        "BUCKET_NAME", "SERVE_URL",
         "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"
     ]
     missing = [k for k in required if not os.getenv(k)]
     if missing:
         print(f"FATAL: Missing environment variables: {missing}")
         sys.exit(1)
-    print("Environment check passed.")
+    
+    # Pre-flight Validation for Remotion Site
+    serve_url = os.getenv("SERVE_URL")
+    print(f"Validating Remotion Site: {serve_url}")
+    try:
+        r = requests.head(serve_url, timeout=10)
+        if r.status_code == 403:
+            print(f"FATAL: Remotion SERVE_URL returned 403 Forbidden.")
+            print("ACTION: Your Remotion bundle is either not deployed or S3 permissions are restricted.")
+            print(f"URL: {serve_url}")
+            sys.exit(1)
+        elif r.status_code >= 400:
+            print(f"FATAL: Remotion SERVE_URL returned status {r.status_code}.")
+            sys.exit(1)
+    except Exception as e:
+        print(f"FATAL: Failed to reach Remotion SERVE_URL: {e}")
+        sys.exit(1)
+
+    print("Environment & Site check passed.")
 
 # -----------------------------------------------------------------------------
 
@@ -69,7 +88,7 @@ from src.media.assets import get_background_videos, get_sfx_urls, get_bgm_url
 from src.media.builder import make_cloud_video
 from src.api.youtube import upload_video
 from src.api.meta import MetaAPI
-from src.utils.discord import ping_creator, ping_error, ping_render_start, ping_queue
+from src.utils.discord import ping_error, ping_creator, ping_render_start, ping_queue
 
 def extract_s3_key(url):
     """Extract object key from a pre-signed or direct S3 URL."""
@@ -115,7 +134,7 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
 
     full_audio_script = " ".join([s['voiceover'] for s in viral_package['segments']])
 
-    audio_url, duration, voice_error = generate_voiceover(full_audio_script, category=category)
+    audio_url, duration, word_timestamps, voice_error = generate_voiceover(full_audio_script, category=category)
     if not audio_url:
         print("\nFACTORY HALTED: Voiceover generation failed.")
         ping_error(str(voice_error), "ElevenLabs")
@@ -125,7 +144,7 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
         topic,
         search_keyword,
         backup_keywords=viral_package.get('backup_keywords'),
-        num_clips=5,
+        num_clips=10,
         max_duration=duration
     )
     sfx_urls = get_sfx_urls(num_sfx=max(7, len(viral_package['segments'])))
@@ -140,16 +159,17 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
         return None, None, False
 
     render_seed = int(time.time())
-    ping_render_start(viral_package['title'])
+    ping_render_start(viral_package['title'], category=category)
     final_video_url, render_error = make_cloud_video(
         audio_url,
         video_urls,
         sfx_urls,
         bgm_url,
         viral_package['segments'],
-        min(duration, 59.0), # Hard-cap at 59.0s for Shorts compliance
+        min(duration, 50.0), # Hard-cap at 50.0s for stability & retention
         category=category,
-        render_seed=render_seed
+        render_seed=render_seed,
+        word_timestamps=word_timestamps
     )
 
     if final_video_url:
@@ -178,13 +198,16 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
                     return None, None, False
 
         print("\n[STEP 1/2] Initiating YouTube Upload...")
+        from src.api.youtube import get_publish_at
+        publish_at = get_publish_at()
         youtube_link = upload_video(
             local_filename,
             viral_package['title'],
             viral_package['description'],
             category,
             tags=viral_package.get('tags'),
-            token_name=token_name
+            token_name=token_name,
+            publish_at=publish_at
         )
 
         tiktok_status = "Skipped"
@@ -311,9 +334,9 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
         return None, None, False
 
 def start_factory():
-    print("HAZY MULTI-CHANNEL FACTORY STARTING...\n" + "="*40)
+    print("HAZY MULTI-CHANNEL FACTORY STARTING (PARALLEL v14)...\n" + "="*40)
     
-    # Define channel configurations
+    # Define channel configurations — 2 accounts, 2 videos per run
     channels = [
         {
             "name": "Hazy Insight",
@@ -321,7 +344,7 @@ def start_factory():
             "categories": ["general"]
         },
         {
-            "name": "US Channel",
+            "name": "Hazy US",
             "token": "token_youtube_us.json",
             "categories": ["us-centric"]
         }
@@ -340,37 +363,48 @@ def start_factory():
     queued_titles = []
     produced_topics = []
 
-    for channel in channels:
-        print(f"\n>>> PROCESSING CHANNEL: {channel['name'].upper()} <<<")
-        
-        # Pick a category for this channel
-        category = random.choice(channel["categories"])
-        
-        try:
-            topic, title, queued = produce_video(
+    # Sequential Execution to prevent AWS Lambda concurrency limits (Rate Exceeded)
+    max_workers = 1
+    print(f"Dispatching {len(channels)} channel(s) sequentially to respect AWS limits...\n")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {}
+        for channel in channels:
+            category = random.choice(channel["categories"])
+            # Note: local_excludes is not strictly thread-safe here, but for 2-4 channels 
+            # with different categories, collision is negligible.
+            future = executor.submit(
+                produce_video, 
                 category, 
                 local_excludes=produced_topics, 
                 token_name=channel["token"]
             )
-            
-            if topic:
-                produced_topics.append(topic)
-                if queued: 
-                    queued_titles.append(f"[{channel['name']}] {title}")
-            else:
-                print(f"  Warning: Production failed for {channel['name']}. Continuing to next channel.")
-                # We don't mark overall_success = False here if we want other channels to proceed
-        except Exception as e:
-            print(f"  Channel Fatal ({channel['name']}): {e}")
-            ping_error(f"Channel {channel['name']} crashed: {e}", "Orchestrator")
-            overall_success = False
+            futures[future] = channel["name"]
+
+        for future in as_completed(futures):
+            channel_name = futures[future]
+            try:
+                topic, title, queued = future.result()
+                if topic:
+                    print(f"\n>>> CHANNEL SUCCESS: {channel_name.upper()} <<<")
+                    produced_topics.append(topic)
+                    if queued: 
+                        queued_titles.append(f"[{channel_name}] {title}")
+                else:
+                    print(f"\n>>> CHANNEL FAILED: {channel_name.upper()} (Returned None) <<<")
+                    overall_success = False
+            except Exception as e:
+                print(f"\n>>> CHANNEL CRASHED: {channel_name.upper()} <<<\n{e}")
+                traceback.print_exc()
+                ping_error(f"Channel {channel_name} crashed: {e}", "Orchestrator")
+                overall_success = False
 
     # Only notify about the queue state if the factory run had at least some success.
     if queued_titles:
         ping_queue(queued_titles)
     
     if not overall_success:
-        print("\nFACTORY SHUTDOWN WITH ERRORS. Check logs above.")
+        print("\nFACTORY SHUTDOWN WITH ERRORS. One or more channels failed.")
         sys.exit(1)
     
     print("\nHAZY MULTI-CHANNEL FACTORY SHUTTING DOWN. ALL TASKS COMPLETE!")

@@ -1,4 +1,7 @@
 import os
+import time
+import random
+import datetime
 import googleapiclient.discovery
 import googleapiclient.errors
 from googleapiclient.http import MediaFileUpload
@@ -7,6 +10,53 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 from src.utils.discord import ping_error
+
+# Target publish slots in UTC (7AM ET = 11:00 UTC, 7PM ET = 23:00 UTC)
+_PUBLISH_SLOTS_UTC = [11, 23]
+
+def get_publish_at():
+    """
+    Returns the next scheduled publish slot as ISO 8601 UTC string.
+    Slots: 11:00 UTC (7 AM ET) and 23:00 UTC (7 PM ET).
+    If all today’s slots have passed, returns tomorrow’s 11:00 UTC.
+    If the next slot is more than 2 hours away from now, returns it.
+    Returns None if we’re within 2 hours PAST a slot (manual run — publish immediately).
+    """
+    now = datetime.datetime.utcnow()
+    today = now.date()
+
+    for hour in _PUBLISH_SLOTS_UTC:
+        slot = datetime.datetime(today.year, today.month, today.day, hour, 0, 0)
+        diff = (slot - now).total_seconds()
+        if 0 < diff <= 7200:   # slot is 0–2 hours in the future — schedule it
+            return slot.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    # All today’s slots passed or already within 2h-past window — publish immediately
+    return None
+
+
+# Rotated engagement CTAs — keyed by category to feel contextually human
+_ENGAGEMENT_COMMENTS = {
+    "us-centric": [
+        "Did you know this about the US? Drop a comment 👇",
+        "Which fact surprised you the most? 👇",
+        "Follow for more US facts nobody talks about!",
+        "Share this with someone who needs to see it 👇",
+        "What’s the wildest US fact YOU know? Comment below!",
+    ],
+    "general": [
+        "What did you NOT know before this? Drop it below 👇",
+        "Follow if this changed how you see the world 👇",
+        "Which part shocked you the most? Comment below!",
+        "Share this with someone whose mind needs to be blown 🤯",
+        "Drop a 🤯 if this blew your mind.",
+    ],
+}
+
+
+def _get_engagement_comment(category):
+    pool = _ENGAGEMENT_COMMENTS.get(category, _ENGAGEMENT_COMMENTS["general"])
+    return random.choice(pool)
 
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
@@ -83,8 +133,10 @@ def get_authenticated_service(token_name='token_youtube.json'):
             token.write(creds.to_json())
     return googleapiclient.discovery.build('youtube', 'v3', credentials=creds)
 
-def upload_video(video_path, title, description, category="gaming", tags=None, token_name='token_youtube.json'):
+def upload_video(video_path, title, description, category="general", tags=None, token_name='token_youtube.json', publish_at=None):
     print(f"\nPreparing to upload {video_path} to YouTube ({token_name})...")
+    if publish_at:
+        print(f"  Scheduled publish: {publish_at} (video will be private until then)")
     
     youtube = get_authenticated_service(token_name=token_name)
     if not youtube:
@@ -92,24 +144,40 @@ def upload_video(video_path, title, description, category="gaming", tags=None, t
 
 
     if not tags:
-        if category == "gaming":
-            tags = ["shorts", "gaming", "roblox", "bloxfruits"]
-        else:
-            tags = ["shorts", "education", "facts", "science"]
+        tags = ["shorts", "education", "facts", "science"]
 
-    category_id = "20" if category == "gaming" else "27"
+    # Proper YouTube category IDs per content type
+    # 24 = Entertainment (US-centric), 27 = Education (general)
+    if category == "us-centric":
+        category_id = "24"
+    else:
+        category_id = "27"
 
-    request_body = {
-        "snippet": {
-            "title": f"{title} #Shorts",
-            "description": f"{description}\n\n#Shorts #trends #hazychanel",
-            "tags": tags,
-            "categoryId": category_id
-        },
-        "status": {
+    # Only append #Shorts if not already in the title
+    clean_title = title if "#Shorts" in title or "#shorts" in title else f"{title} #Shorts"
+
+    # Use Gemini description as-is — it already includes SEO hashtags
+    # When publishAt is set, video MUST be private first — YouTube auto-publishes at the slot
+    if publish_at:
+        status_block = {
+            "privacyStatus": "private",
+            "publishAt": publish_at,
+            "selfDeclaredMadeForKids": False
+        }
+    else:
+        status_block = {
             "privacyStatus": "public",
             "selfDeclaredMadeForKids": False
         }
+
+    request_body = {
+        "snippet": {
+            "title": clean_title,
+            "description": description,
+            "tags": tags,
+            "categoryId": category_id
+        },
+        "status": status_block
     }
 
     mediaFile = MediaFileUpload(video_path, chunksize=-1, resumable=True)
@@ -130,7 +198,8 @@ def upload_video(video_path, title, description, category="gaming", tags=None, t
             video_link = f"https://youtu.be/{video_id}"
             print(f"Video Link: {video_link}")
             
-            engagement_text = "What did you NOT know before this? Drop it below 👇"
+            # Fix 7: Rotate engagement comment by category
+            engagement_text = _get_engagement_comment(category)
             post_and_pin_comment(youtube, video_id, engagement_text)
             
             return video_link

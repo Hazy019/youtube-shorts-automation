@@ -11,8 +11,8 @@ AUDIO VOLUMES (tuned down — previous values were too loud):
     SFX hook:   0.20 → 0.18   (boom at segment 0)
     SFX CTA:    0.20 → 0.18   (riser at last segment)
     SFX mid:    0.15 → 0.13   (all other segments)
-    BGM gaming: 0.10
-    BGM general: 0.07
+    BGM gaming: 0.15
+    BGM general: 0.12
     These levels keep voiceover dominant and prevent audio clipping.
 """
 import os
@@ -129,6 +129,7 @@ def make_cloud_video(
     duration_seconds,
     category="general",
     render_seed=0,
+    word_timestamps=None,
 ):
     """
     Render a video on AWS Lambda using single-chunk mode (no stitcher).
@@ -145,26 +146,29 @@ def make_cloud_video(
     if total_frames < 150:
         return None, f"Video too short: {total_frames} frames (min 150)"
 
-    # SAFETY CHUNKING (v13.5): 
-    # Your 3GB Lambda is rendering at ~1.5 FPS. 450f (15s) was sometimes timing out.
-    # 300f (10s) takes ~200s to render, which fits much more safely within your 600s limit.
-    frames_per_lambda = min(total_frames, 300)
+    # SAFETY CHUNKING (v14-PARALLEL): 
+    # Your 3GB Lambda is rendering at ~1.5 FPS. 300f (10s) was sometimes timing out 
+    # when processing multiple channels in parallel.
+    # 150f (5s) chunks render extremely quickly (~80s) and ensure stability.
+    frames_per_lambda = min(total_frames, 150)
     chunk_count = math.ceil(total_frames / frames_per_lambda)
     print(f"  Render plan: {total_frames} frames → {chunk_count} chunk(s) of {frames_per_lambda}f (Safety Chunking v13.5-ENFORCED)", flush=True)
 
     if chunk_count >= 8:
         print(f"  WARNING: High chunk count ({chunk_count}). Stitcher may time out. Consider increasing Lambda Timeout or simplifying the video.", flush=True)
 
-    bgm_volume = 0.10 if category == "gaming" else 0.07
+    bgm_volume = 0.15 if category == "gaming" else 0.12
 
     input_props = {
-        "audioUrl":   voice_url,
-        "videoUrls":  background_urls,
-        "sfxUrls":    sfx_urls or [],
-        "bgmUrl":     bgm_url or "",
-        "bgmVolume":  bgm_volume,
-        "segments":   segments_data,
-        "renderSeed": render_seed,
+        "audioUrl":       voice_url,
+        "videoUrls":      background_urls,
+        "sfxUrls":        sfx_urls or [],
+        "bgmUrl":         bgm_url or "",
+        "bgmVolume":      bgm_volume,
+        "segments":       segments_data,
+        "renderSeed":     render_seed,
+        "category":       category,
+        "wordTimestamps": word_timestamps or [],
         "effects": {
             "zoom":       True,
             "transition": "fade",
@@ -204,6 +208,8 @@ def make_cloud_video(
             if _is_fatal_config_error(error_data):
                 err = f"Fatal config error (no retry useful): {str(error_data)[:200]}"
                 print(f"\n  {err}", flush=True)
+                if "compositions" in err.lower() or "serve url" in err.lower():
+                    err += "\nACTION: Your Remotion bundle is missing or returning 403. Redeploy with: npx remotion lambda sites create src/index.ts --site-name=hazy-v13"
                 return None, err
 
             if _is_stitcher_timeout(error_data):

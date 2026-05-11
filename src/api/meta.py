@@ -2,6 +2,7 @@ import os
 import time
 import requests
 from dotenv import load_dotenv
+from src.utils.discord import ping_error
 
 load_dotenv()
 
@@ -48,7 +49,22 @@ class MetaAPI:
             return None
             
         try:
-            video_data = requests.get(video_url).content
+            # Stream download in chunks — avoids loading 50MB+ into RAM
+            print(f"    Downloading video from S3 for Facebook upload...")
+            video_data = b""
+            for dl_attempt in range(3):
+                try:
+                    with requests.get(video_url, stream=True, timeout=120) as r:
+                        r.raise_for_status()
+                        for chunk in r.iter_content(chunk_size=8192):
+                            video_data += chunk
+                    break
+                except Exception as e:
+                    print(f"    FB download error (attempt {dl_attempt+1}/3): {e}")
+                    if dl_attempt == 2:
+                        raise e
+                    time.sleep(2 ** dl_attempt)
+
             headers = {
                 "Authorization": f"OAuth {self.access_token}",
                 "offset": "0",
@@ -130,7 +146,9 @@ class MetaAPI:
             print(f"⏳ IG Status: {status}... ({i+1}/{max_retries})")
             time.sleep(10)
         else:
-            print("❌ IG Status polling timed out.")
+            err = f"IG Status polling timed out after {max_retries * 10}s. Container ID: {creation_id}"
+            print(f"❌ {err}")
+            ping_error(err, "Instagram Upload")
             return None
 
         # Step 3: Publish

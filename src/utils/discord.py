@@ -58,14 +58,14 @@ def _post(url, content=None, embed=None):
         print(f"  Discord post failed: {e}")
 
 
-def ping_render_start(title):
+def ping_render_start(title, category="general"):
     global start_time
     start_time = time.time()
-    print(f"Factory started: {title}")
+    print(f"Factory started: {title} [{category}]")
     
     embed = {
         "title": "🏗️ Factory Started",
-        "description": f"**Project:** `{title}`\n\n🟡 *Rendering in progress...*",
+        "description": f"**Project:** `{title}`\n**Category:** `{category.upper()}`\n\n🟡 *Rendering in progress...*",
         "color": 0xF1C40F  # Yellow/Gold
     }
     _post(URL_LOGS, embed=embed)

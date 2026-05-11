@@ -2,89 +2,104 @@ name: Daily Hazy Chanel Factory
 
 on:
   schedule:
-    - cron: '0 11 * * *'   # 7 AM ET — US morning
-    - cron: '0 23 * * *'   # 7 PM ET — US prime time
+    - cron: '30 10 * * *'   # 6:30 AM ET — renders 30min before 7:00 AM publish slot
+    - cron: '30 22 * * *'   # 6:30 PM ET — renders 30min before 7:00 PM publish slot
   workflow_dispatch:
+
+# Prevents minute waste if a manual re-run or workflow_dispatch fires during a live run
+concurrency:
+  group: hazy-factory
+  cancel-in-progress: true
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 30
 
-      - uses: actions/setup-python@v4
+    steps:
+      # fetch-depth: 1 = shallow clone (latest commit only, skips full git history)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # setup-python@v5 has pip cache built-in — replaces the separate actions/cache step
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: pip-
-
-
+      # Auth Tokens — one per YouTube account
       - name: Recreate Auth Tokens
         env:
-          DRIVE_TOKEN:    ${{ secrets.DRIVE_TOKEN_JSON }}
+          DRIVE_TOKEN:        ${{ secrets.DRIVE_TOKEN_JSON }}
           YOUTUBE_TOKEN_HAZY: ${{ secrets.TOKEN_YOUTUBE_HAZY }}
           YOUTUBE_TOKEN_US:   ${{ secrets.TOKEN_YOUTUBE_US }}
-          CLIENT_SECRETS: ${{ secrets.CLIENT_SECRETS_JSON }}
-          IG_SESSION:     ${{ secrets.IG_SESSION_JSON }}
+          CLIENT_SECRETS:     ${{ secrets.CLIENT_SECRETS_JSON }}
         run: |
-          echo "$DRIVE_TOKEN"         > token_drive.json
-          echo "$YOUTUBE_TOKEN_HAZY"  > token_youtube_hazy.json
-          echo "$YOUTUBE_TOKEN_US"    > token_youtube_us.json
-          echo "$CLIENT_SECRETS"      > client_secrets.json
-          if [ -n "$IG_SESSION" ]; then
-            echo "$IG_SESSION" > ig_session.json
-          fi
+          echo "$DRIVE_TOKEN"        > token_drive.json
+          echo "$YOUTUBE_TOKEN_HAZY" > token_youtube_hazy.json
+          echo "$YOUTUBE_TOKEN_US"   > token_youtube_us.json
+          echo "$CLIENT_SECRETS"     > client_secrets.json
 
+      # Environment
       - name: Create .env File
         run: |
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
-          echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}" >> .env
-          echo "PEXELS_API_KEY=${{ secrets.PEXELS_API_KEY }}" >> .env
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"             >> .env
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}"                 >> .env
+          echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}"                 >> .env
+          echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}"     >> .env
+          echo "PEXELS_API_KEY=${{ secrets.PEXELS_API_KEY }}"             >> .env
+          echo "PIXABAY_API_KEY=${{ secrets.PIXABAY_API_KEY }}"           >> .env
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"       >> .env
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
-          echo "BUCKET_NAME=${{ secrets.BUCKET_NAME }}" >> .env
-          echo "SERVE_URL=${{ secrets.SERVE_URL }}" >> .env
-          echo "ROBLOX_FOLDER_ID=${{ secrets.ROBLOX_FOLDER_ID }}" >> .env
-          echo "PARKOUR_FOLDER_ID=${{ secrets.PARKOUR_FOLDER_ID }}" >> .env
-          echo "SFX_FOLDER_ID=${{ secrets.SFX_FOLDER_ID }}" >> .env
-          echo "GAMING_BGM_FOLDER_ID=${{ secrets.GAMING_BGM_FOLDER_ID }}" >> .env
+          echo "BUCKET_NAME=${{ secrets.BUCKET_NAME }}"                   >> .env
+          echo "SERVE_URL=${{ secrets.SERVE_URL }}"                       >> .env
+          echo "SFX_FOLDER_ID=${{ secrets.SFX_FOLDER_ID }}"               >> .env
           echo "GENERAL_BGM_FOLDER_ID=${{ secrets.GENERAL_BGM_FOLDER_ID }}" >> .env
-          echo "WEBHOOK_LOGS=${{ secrets.WEBHOOK_LOGS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
-          echo "WEBHOOK_ERRORS=${{ secrets.WEBHOOK_ERRORS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
-          echo "WEBHOOK_POSTS=${{ secrets.WEBHOOK_POSTS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
-          echo "WEBHOOK_QUEUE=${{ secrets.WEBHOOK_QUEUE || secrets.DISCORD_WEBHOOK_URL }}" >> .env
-          echo "WEBHOOK_INSIGHTS=${{ secrets.WEBHOOK_INSIGHTS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
-          echo "TIKTOK_COOKIES_JSON=${{ secrets.TIKTOK_COOKIES_JSON }}" >> .env
-          echo "TIKTOK_COOKIES_TXT=${{ secrets.TIKTOK_COOKIES_TXT }}" >> .env
-          echo "META_PAGE_ACCESS_TOKEN=${{ secrets.META_PAGE_ACCESS_TOKEN }}" >> .env
-          echo "META_PAGE_ID=${{ secrets.META_PAGE_ID }}" >> .env
-          echo "META_INSTAGRAM_ID=${{ secrets.META_INSTAGRAM_ID }}" >> .env
           echo "SCIENCE_BROLL_FOLDER_ID=${{ secrets.SCIENCE_BROLL_FOLDER_ID }}" >> .env
           echo "HISTORY_BROLL_FOLDER_ID=${{ secrets.HISTORY_BROLL_FOLDER_ID }}" >> .env
-          echo "FUNCTION_NAME=${{ secrets.FUNCTION_NAME }}" >> .env
-          echo "GITHUB_ACTIONS=true" >> .env
+          echo "WEBHOOK_LOGS=${{ secrets.WEBHOOK_LOGS || secrets.DISCORD_WEBHOOK_URL }}"         >> .env
+          echo "WEBHOOK_ERRORS=${{ secrets.WEBHOOK_ERRORS || secrets.DISCORD_WEBHOOK_URL }}"     >> .env
+          echo "WEBHOOK_POSTS=${{ secrets.WEBHOOK_POSTS || secrets.DISCORD_WEBHOOK_URL }}"       >> .env
+          echo "WEBHOOK_QUEUE=${{ secrets.WEBHOOK_QUEUE || secrets.DISCORD_WEBHOOK_URL }}"       >> .env
+          echo "WEBHOOK_INSIGHTS=${{ secrets.WEBHOOK_INSIGHTS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
+          echo "DISCORD_PING_USER_ID=${{ secrets.DISCORD_PING_USER_ID }}" >> .env
+          echo "TIKTOK_COOKIES_JSON=${{ secrets.TIKTOK_COOKIES_JSON }}"   >> .env
+          echo "TIKTOK_COOKIES_TXT=${{ secrets.TIKTOK_COOKIES_TXT }}"     >> .env
+          echo "META_PAGE_ACCESS_TOKEN=${{ secrets.META_PAGE_ACCESS_TOKEN }}" >> .env
+          echo "META_PAGE_ID=${{ secrets.META_PAGE_ID }}"                 >> .env
+          echo "META_INSTAGRAM_ID=${{ secrets.META_INSTAGRAM_ID }}"       >> .env
+          echo "FUNCTION_NAME=${{ secrets.FUNCTION_NAME }}"               >> .env
+          echo "GITHUB_ACTIONS=true"                                       >> .env
 
+      # Verify Secrets — pure bash, zero pip, runs in <1s
       - name: Verify Critical Secrets
         run: |
-          python -m pip install python-dotenv
-          python -c 'import os; from dotenv import load_dotenv; load_dotenv(); critical = ["GEMINI_API_KEY", "SUPABASE_URL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "BUCKET_NAME", "SERVE_URL", "PARKOUR_FOLDER_ID"]; missing = [k for k, v in {k: os.getenv(k) for k in critical}.items() if not v]; exit(f"::error::Missing critical secrets: {missing}") if missing else print("All critical secrets found.")'
+          MISSING=()
+          [ -z "${{ secrets.GEMINI_API_KEY }}"          ] && MISSING+=("GEMINI_API_KEY")
+          [ -z "${{ secrets.SUPABASE_URL }}"            ] && MISSING+=("SUPABASE_URL")
+          [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}"       ] && MISSING+=("AWS_ACCESS_KEY_ID")
+          [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}"   ] && MISSING+=("AWS_SECRET_ACCESS_KEY")
+          [ -z "${{ secrets.BUCKET_NAME }}"             ] && MISSING+=("BUCKET_NAME")
+          [ -z "${{ secrets.SERVE_URL }}"               ] && MISSING+=("SERVE_URL")
+          [ -z "${{ secrets.PEXELS_API_KEY }}"          ] && MISSING+=("PEXELS_API_KEY")
+          [ -z "${{ secrets.TOKEN_YOUTUBE_HAZY }}"      ] && MISSING+=("TOKEN_YOUTUBE_HAZY")
+          [ -z "${{ secrets.TOKEN_YOUTUBE_US }}"        ] && MISSING+=("TOKEN_YOUTUBE_US")
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing critical secrets: ${MISSING[*]}"
+            exit 1
+          fi
+          echo "✅ All critical secrets present."
 
+      # Dependencies — no pip upgrade, ffmpeg is pre-installed on ubuntu-latest
       - name: Install Python Requirements
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Install System Deps
-        run: |
-          sudo apt-get update && sudo apt-get install -y ffmpeg
+      # API Pre-flight — blocks factory if Pexels/ElevenLabs keys are dead (saves Gemini tokens)
+      - name: Verify APIs (Pre-flight)
+        run: python verify_apis.py
 
+      # Main Factory
       - name: Run Factory
         run: python run_factory.py
