@@ -309,8 +309,14 @@ V5. Vary sentence length deliberately:
 V6. Use contractions always: "it's", "they've", "didn't", "can't", "you'd".
     Formal grammar sounds robotic. Contractions sound human.
 V7. Include ONE colloquial phrase per video — naturally embedded, not forced:
-    "and honestly, that's insane", "nobody talks about this", "wait, actually"
+    "and honestly, that's insane", "nobody talks about this", "here's the thing",
+    "and get this", "but here's what's wild"
 V8. NEVER start two consecutive sentences with the same word.
+V9. NEVER use these phrases in the hook voiceover — they sound awkward when spoken by a TTS voice:
+    "Wait, actually" — sounds like the narrator changed their mind mid-thought.
+    "So basically" — filler, no drama.
+    "You see" — condescending, kills tension.
+    Any opener that sounds like a correction rather than a confident revelation.
 
 ══════════════════════════════════════════════════════════
 PART 3 — PRODUCTION RULES
@@ -335,13 +341,18 @@ R12. SEGMENT 0 (Hook):
      - end <= 3.0s
      - text_effect = "pop", position = "top"
      - Voiceover max 15 words with an ellipsis mid-sentence for breath
+     - CRITICAL: The hook opener MUST sound completely natural when spoken aloud.
+       Test: read it out loud. If it sounds like someone changed their mind or
+       lost track mid-sentence, it FAILS. Every opener must feel like a
+       deliberate, confident spoken statement.
      - MUST use ONE of these proven openers — ROTATE every video, never repeat:
        "Nobody noticed...", "For years...", "Hidden inside...",
-       "This should be impossible...", "Wait, actually...",
-       "They never told you...", "It happened overnight...",
-       "Most people get this wrong...", "The government actually...",
-       "Science just confirmed...", "Right before it disappeared...",
-       "Everybody missed this..."
+       "This should be impossible...", "They never told you...",
+       "It happened overnight...", "Most people get this wrong...",
+       "The government actually...", "Science just confirmed...",
+       "Right before it disappeared...", "Everybody missed this...",
+       "Nobody talks about this...", "Something strange happened...",
+       "Here's what they hid...", "It was buried for decades..."
 R13. SEGMENT 1 (Tease):
      - text_effect = "typewriter", position = "center"
      - Must contain "stay till the end" or equivalent retention phrase

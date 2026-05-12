@@ -85,7 +85,7 @@ async def capture_cookies():
             print("\n[SUCCESS] All critical authentication cookies captured.")
 
         # Save as JSON
-        with open("tiktok_cookies.json", "w") as f:
+        with open("tiktok_cookies.json", "w", encoding="utf-8") as f:
             json.dump(cookies, f, indent=2)
             
         print("\nSUCCESS! Saved to tiktok_cookies.json")

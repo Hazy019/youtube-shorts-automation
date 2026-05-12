@@ -34,18 +34,18 @@ class MetaAPI:
         init_res = init_req.json()
         
         if "video_id" not in init_res:
-            print(f"❌ FB Init Failed: {init_res}")
+            print(f"[FAIL] FB Init Failed: {init_res}")
             return None
         
         video_id = init_res["video_id"]
         upload_url = init_res.get("upload_url")
-        print(f"✅ FB Init Success. Video ID: {video_id}")
+        print(f"[OK] FB Init Success. Video ID: {video_id}")
 
         # ---------------------------------------------------------
         # Step 2: Upload Binary
         # ---------------------------------------------------------
         if not upload_url:
-            print("❌ FB Upload URL missing from init response.")
+            print("[FAIL] FB Upload URL missing from init response.")
             return None
             
         try:
@@ -75,11 +75,11 @@ class MetaAPI:
             upload_json = upload_res.json()
             
             if not upload_json.get("success"):
-                print(f"❌ FB Binary Upload Failed: {upload_json}")
+                print(f"[FAIL] FB Binary Upload Failed: {upload_json}")
                 return None
-            print("✅ FB Binary Upload Success.")
+            print("[OK] FB Binary Upload Success.")
         except Exception as e:
-            print(f"❌ FB Upload Exception: {e}")
+            print(f"[FAIL] FB Upload Exception: {e}")
             return None
 
         # ---------------------------------------------------------
@@ -100,7 +100,7 @@ class MetaAPI:
             print("🎉 Facebook Reel Published successfully!")
             return video_id
         else:
-            print(f"❌ FB Publish Failed: {publish_res}")
+            print(f"[FAIL] FB Publish Failed: {publish_res}")
             return None
 
     def upload_instagram_reel(self, video_url, caption):
@@ -122,11 +122,11 @@ class MetaAPI:
         container_res = container_req.json()
         
         if "id" not in container_res:
-            print(f"❌ IG Container Creation Failed: {container_res}")
+            print(f"[FAIL] IG Container Creation Failed: {container_res}")
             return None
         
         creation_id = container_res["id"]
-        print(f"✅ IG Container Created: {creation_id}. Waiting for processing...")
+        print(f"[OK] IG Container Created: {creation_id}. Waiting for processing...")
 
         # Step 2: Poll for status
         max_retries = 30
@@ -137,17 +137,17 @@ class MetaAPI:
             status = status_res.get("status_code")
             
             if status == "FINISHED":
-                print("✅ IG Processing Finished.")
+                print("[OK] IG Processing Finished.")
                 break
             elif status == "ERROR":
-                print(f"❌ IG Processing Error: {status_res}")
+                print(f"[FAIL] IG Processing Error: {status_res}")
                 return None
             
             print(f"⏳ IG Status: {status}... ({i+1}/{max_retries})")
             time.sleep(10)
         else:
             err = f"IG Status polling timed out after {max_retries * 10}s. Container ID: {creation_id}"
-            print(f"❌ {err}")
+            print(f"[FAIL] {err}")
             ping_error(err, "Instagram Upload")
             return None
 
@@ -164,7 +164,7 @@ class MetaAPI:
             print("🎉 Instagram Reel Published successfully!")
             return publish_res["id"]
         else:
-            print(f"❌ IG Publish Failed: {publish_res}")
+            print(f"[FAIL] IG Publish Failed: {publish_res}")
             return None
 
 if __name__ == "__main__":

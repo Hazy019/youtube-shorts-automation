@@ -1,4 +1,4 @@
-# Hazy Chanel Automator — Requirements v14 (Pinned & Stable)
+# Hazy Chanel Automator — Requirements v15 (Stable, Conflict-Free)
 google-genai==1.70.0
 supabase==2.28.3
 python-dotenv==1.0.1
@@ -12,5 +12,4 @@ google-auth-httplib2==0.2.0
 google-auth==2.49.1
 pydub==0.25.1
 remotion-lambda==4.0.443
-pydantic==2.11.4
-tenacity>=9.1.4
+tenacity>=9.1.0
