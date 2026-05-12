@@ -1,8 +1,8 @@
 """
-tts.py — Text-to-Speech Engine v12
-------------------------------------
-PRIMARY:  Edge-TTS (free, unlimited, high-speed)
-FALLBACK: ElevenLabs (paid, high-fidelity)
+tts.py — Text-to-Speech Engine v13 (Edge-TTS Only)
+----------------------------------------------------
+PRIMARY:  Edge-TTS (free, unlimited, high-speed) with voice retry
+FALLBACK: None — ElevenLabs removed (no subscription)
 
 EDGE-TTS ANTI-DETECTION STRATEGY:
   1. Voice: AndrewNeural or GuyNeural — NOT ChristopherNeural (most flagged voice)
@@ -19,6 +19,10 @@ EDGE-TTS ANTI-DETECTION STRATEGY:
 VOICE ROTATION (anti-detection):
   Rotating voices across videos prevents viewers from pattern-matching the AI voice.
   GuyNeural → AndrewNeural → RyanNeural → rotate for each video.
+
+RETRY LOGIC:
+  If a voice returns "No audio was received", the engine will automatically
+  retry with the next available voice in the pool (up to MAX_TTS_RETRIES).
 """
 
 import os
@@ -38,12 +42,8 @@ load_dotenv()
 
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 
-# ── ElevenLabs voice IDs (broadcast quality, harder to detect as AI) ─────────
-ELEVENLABS_VOICE_IDS = [
-    "IKne3meq5aSn9XLyUdCD",   # Adam — authoritative, good for gaming
-    "pNInz6obpgDQGcFmaJgB",   # Antoni — warm, good for general facts
-    "TX3LPaxmHKxFdv7VOQHJ",   # Liam — energetic, good for hooks
-]
+# Maximum number of Edge-TTS voice retries before giving up
+MAX_TTS_RETRIES = 3
 
 # ── Edge-TTS voice pool (best-sounding, anti-detection) ─────────────────────
 # REMOVED: GuyNeural — most recognizable/robotic AI voice on YouTube. Huge mistake.
@@ -75,10 +75,12 @@ async def _generate_edge_tts_async(text: str, output_file: str, voice_config: di
         pitch=voice_config["pitch"],
     )
     word_boundaries = []
+    audio_bytes = 0
     with open(output_file, "wb") as audio_file:
         async for chunk in communicate.stream():
             if chunk["type"] == "audio":
                 audio_file.write(chunk["data"])
+                audio_bytes += len(chunk["data"])
             elif chunk["type"] == "WordBoundary":
                 # Edge-TTS offset is in 100-nanosecond ticks → convert to seconds
                 word_boundaries.append({
@@ -86,46 +88,33 @@ async def _generate_edge_tts_async(text: str, output_file: str, voice_config: di
                     "start":    round(chunk["offset"]   / 10_000_000, 3),
                     "duration": round(chunk["duration"] / 10_000_000, 3),
                 })
+
+    if audio_bytes == 0:
+        raise ValueError("No audio was received from Edge-TTS (0 bytes returned).")
+
     return word_boundaries
 
 
-def _pick_edge_voice(category: str) -> dict:
+def _pick_edge_voice(category: str, exclude: list = None) -> dict:
     """
-    Pick the best Edge-TTS voice for the category.
+    Pick the best Edge-TTS voice for the category, excluding already-tried voices.
     Prioritizes the most human-sounding voices per content type.
     Gaming: energetic (Jason). General/Science: deep storytelling (Steffan, Davis).
     US-Centric: dramatic and authoritative (Davis, Tony).
     """
+    exclude = exclude or []
+    exclude_names = {v["name"] for v in exclude}
+
     if category == "us-centric":
-        # Davis is authoritative and dramatic — matches the Breaking News style
-        pool = [v for v in EDGE_TTS_VOICES if "Davis" in v["name"] or "Tony" in v["name"]]
+        pool = [v for v in EDGE_TTS_VOICES if ("Davis" in v["name"] or "Tony" in v["name"]) and v["name"] not in exclude_names]
     else:
-        # Steffan is the best for warm, believable fact-based storytelling
-        pool = [v for v in EDGE_TTS_VOICES if "Steffan" in v["name"] or "Tony" in v["name"] or "Brian" in v["name"]]
+        pool = [v for v in EDGE_TTS_VOICES if ("Steffan" in v["name"] or "Tony" in v["name"] or "Brian" in v["name"]) and v["name"] not in exclude_names]
 
-    return random.choice(pool if pool else EDGE_TTS_VOICES)
+    # If preferred pool is exhausted, fall back to any remaining voice
+    if not pool:
+        pool = [v for v in EDGE_TTS_VOICES if v["name"] not in exclude_names]
 
-
-def check_elevenlabs_quota(api_key: str) -> float:
-    """Returns usage ratio 0.0-1.0. Returns 0.0 (safe) on network error."""
-    if not api_key:
-        return 1.0  # treat missing key as quota exhausted → use fallback
-    try:
-        r = requests.get(
-            "https://api.elevenlabs.io/v1/user/subscription",
-            headers={"xi-api-key": api_key},
-            timeout=10,
-        )
-        if r.status_code == 200:
-            data = r.json()
-            limit = data.get("character_limit", 1)
-            return data.get("character_count", 0) / limit if limit else 1.0
-        else:
-            print(f"  ElevenLabs quota check failed (HTTP {r.status_code}). Switching to fallback.")
-            return 1.0  # Treat any error as "quota exhausted" to trigger fallback safely
-    except Exception:
-        pass
-    return 0.0
+    return random.choice(pool) if pool else None
 
 
 def _normalize_audio(local_file: str) -> bool:
@@ -145,86 +134,84 @@ def _normalize_audio(local_file: str) -> bool:
 
 def generate_voiceover(script_text: str, category: str = "general"):
     """
-    Generate a voiceover MP3, upload to S3, and return a presigned URL.
+    Generate a voiceover MP3 using Edge-TTS, upload to S3, and return a presigned URL.
 
     Returns: (url: str | None, duration_seconds: float, word_timestamps: list, error: str | None)
     word_timestamps is a list of {word, start, duration} dicts for karaoke captions.
     Always unpack all four values.
+
+    Retry logic: if a voice fails with "No audio was received", the engine
+    automatically retries with a different voice from the pool (up to MAX_TTS_RETRIES).
     """
-    api_key    = os.getenv("ELEVENLABS_API_KEY")
     local_file = f"temp_voice_{int(time.time())}.mp3"
-    use_fallback = False
     word_timestamps = []  # populated by Edge-TTS WordBoundary events
+    tried_voices = []
+    last_error = None
 
-    # ── Primary: Edge-TTS (Free & Unlimited) ───────────────────────────
-    voice_config = _pick_edge_voice(category)
-    # Let the voice pool handle pacing — do NOT override rate here.
-    # The tuned pool uses -3% to -5% rate (slower = more human).
-    print(f"  Edge-TTS Primary: {voice_config['name']} rate={voice_config['rate']} pitch={voice_config['pitch']}")
+    # ── Edge-TTS with retry on different voices ──────────────────────────────
+    for attempt in range(1, MAX_TTS_RETRIES + 1):
+        voice_config = _pick_edge_voice(category, exclude=tried_voices)
+        if not voice_config:
+            print(f"  Edge-TTS: All voices exhausted after {attempt - 1} attempt(s).")
+            break
 
-    tts_error = None
+        tried_voices.append(voice_config)
+        print(f"  Edge-TTS attempt {attempt}/{MAX_TTS_RETRIES}: {voice_config['name']} rate={voice_config['rate']} pitch={voice_config['pitch']}")
 
-    def _run_tts():
-        nonlocal tts_error, word_timestamps
-        try:
-            word_timestamps = asyncio.run(
-                _generate_edge_tts_async(script_text, local_file, voice_config)
-            )
-            print(f"  Edge-TTS: captured {len(word_timestamps)} word timestamps for karaoke.")
-        except Exception as e:
-            tts_error = e
+        tts_error = None
 
-    t = threading.Thread(target=_run_tts)
-    t.start()
-    t.join(timeout=120)
+        def _run_tts():
+            nonlocal tts_error, word_timestamps
+            try:
+                word_timestamps = asyncio.run(
+                    _generate_edge_tts_async(script_text, local_file, voice_config)
+                )
+                print(f"  Edge-TTS: captured {len(word_timestamps)} word timestamps for karaoke.")
+            except Exception as e:
+                tts_error = e
 
-    if t.is_alive():
-        print("  Edge-TTS timed out. Checking ElevenLabs fallback...")
-        use_fallback = True
-    elif tts_error:
-        print(f"  Edge-TTS error: {tts_error}. Checking ElevenLabs fallback...")
-        use_fallback = True
+        t = threading.Thread(target=_run_tts)
+        t.start()
+        t.join(timeout=120)
+
+        if t.is_alive():
+            last_error = f"Edge-TTS timed out on voice {voice_config['name']}."
+            print(f"  ⚠ {last_error} Retrying with next voice...")
+            # Kill dangling file if it exists
+            if os.path.exists(local_file):
+                try: os.remove(local_file)
+                except: pass
+            continue
+
+        if tts_error:
+            last_error = f"Edge-TTS voice {voice_config['name']} failed: {tts_error}"
+            print(f"  ⚠ {last_error} Retrying with next voice...")
+            if os.path.exists(local_file):
+                try: os.remove(local_file)
+                except: pass
+            continue
+
+        # Success — file written, break out of retry loop
+        print(f"  Edge-TTS success on attempt {attempt} with voice {voice_config['name']}!")
+        break
+
     else:
-        print(f"  Edge-TTS success!")
+        # All retries exhausted
+        err = f"Edge-TTS failed on all {MAX_TTS_RETRIES} attempts. Last error: {last_error}"
+        print(f"\n  FATAL: {err}")
+        ping_error(err, "Edge-TTS Engine")
+        return None, 0, [], err
 
-    # ── Fallback: ElevenLabs (Only if Edge-TTS fails) ──────────────────────
-    if use_fallback:
-        print("  ElevenLabs fallback initiated...")
-        usage = check_elevenlabs_quota(api_key)
-        if usage >= 0.98:
-            return None, 0, [], "All TTS options exhausted (ElevenLabs quota full)"
-        
-        voice_id = random.choice(ELEVENLABS_VOICE_IDS)
-        url      = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-        headers  = {
-            "Accept":       "audio/mpeg",
-            "Content-Type": "application/json",
-            "xi-api-key":   api_key or "",
-        }
-        payload = {
-            "text":     script_text,
-            "model_id": "eleven_turbo_v2",
-            "voice_settings": {
-                "stability":        0.45,
-                "similarity_boost": 0.80,
-                "style":            0.30,
-                "use_speaker_boost": True,
-            },
-        }
-        try:
-            resp = requests.post(url, json=payload, headers=headers, timeout=60)
-            if resp.status_code == 200:
-                with open(local_file, "wb") as f:
-                    f.write(resp.content)
-                print(f"  ElevenLabs Fallback: voice_id={voice_id[:8]}... OK")
-            else:
-                return None, 0, [], f"ElevenLabs fallback failed ({resp.status_code}): {resp.text[:100]}"
-        except requests.RequestException as e:
-            return None, 0, [], f"ElevenLabs fallback network error: {e}"
+    # Final check: if file still doesn't exist after the loop
+    if not os.path.exists(local_file):
+        err = f"Edge-TTS failed on all {MAX_TTS_RETRIES} attempts. Last error: {last_error}"
+        print(f"\n  FATAL: {err}")
+        ping_error(err, "Edge-TTS Engine")
+        return None, 0, [], err
 
-    # ── Validate file exists ──────────────────────────────────────────────
-    if not os.path.exists(local_file) or os.path.getsize(local_file) < 1000:
-        return None, 0, [], "Audio file missing or too small after TTS generation"
+    # ── Validate file size ────────────────────────────────────────────────
+    if os.path.getsize(local_file) < 1000:
+        return None, 0, [], "Audio file too small after TTS generation — likely an empty response."
 
     # ── Normalize audio ───────────────────────────────────────────────────
     _normalize_audio(local_file)
@@ -255,4 +242,4 @@ def generate_voiceover(script_text: str, category: str = "general"):
         if os.path.exists(local_file):
             os.remove(local_file)
 
-    return presigned_url, duration_seconds, word_timestamps, None
+    return presigned_url, duration_seconds, word_timestamps, None

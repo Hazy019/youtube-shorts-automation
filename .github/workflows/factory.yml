@@ -48,7 +48,7 @@ jobs:
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}"             >> .env
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}"                 >> .env
           echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}"                 >> .env
-          echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}"     >> .env
+          # ELEVENLABS_API_KEY removed — Edge-TTS is the sole TTS engine
           echo "PEXELS_API_KEY=${{ secrets.PEXELS_API_KEY }}"             >> .env
           echo "PIXABAY_API_KEY=${{ secrets.PIXABAY_API_KEY }}"           >> .env
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"       >> .env
@@ -92,7 +92,15 @@ jobs:
           fi
           echo "✅ All critical secrets present."
 
-      # Dependencies — no pip upgrade, ffmpeg is pre-installed on ubuntu-latest
+      # Verify ffmpeg — pre-installed on ubuntu-latest but confirm it's on PATH
+      - name: Verify ffmpeg
+        run: |
+          echo "ffmpeg version:"
+          ffmpeg -version | head -1
+          echo "ffprobe version:"
+          ffprobe -version | head -1
+
+      # Dependencies — Edge-TTS only (no ElevenLabs), no pip upgrade needed
       - name: Install Python Requirements
         run: pip install -r requirements.txt
 
