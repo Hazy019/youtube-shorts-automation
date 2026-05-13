@@ -82,6 +82,52 @@ def with_supabase_retry(operation, max_attempts=3):
             print(f"  Supabase error (attempt {attempt+1}/{max_attempts}): {e}. Retrying...")
             time.sleep(2)
 
+def _check_column_exists(column_name):
+    """Probe Supabase to see if a column exists before querying it."""
+    try:
+        supabase.table("videos").select(column_name).limit(1).execute()
+        return True
+    except Exception:
+        return False
+
+def find_recovery_record(category):
+    """
+    Check Supabase for a video that was initialized but never successfully 
+    published for this category within the last 48 hours.
+    Gracefully handles missing 'payload' and 'category' columns.
+    """
+    from datetime import datetime, timedelta
+    limit = (datetime.now() - timedelta(hours=48)).isoformat()
+
+    # Check schema readiness once per call
+    has_payload  = _check_column_exists("payload")
+    has_category = _check_column_exists("category")
+
+    if not has_payload:
+        print("  [Recovery] 'payload' column not found in DB — skipping recovery (add column to enable).")
+        return None
+
+    try:
+        query = supabase.table("videos").select("*").is_("youtube_id", "null")
+
+        if has_category:
+            query = query.eq("category", category)
+        else:
+            print("  [Recovery] 'category' column missing — recovery will not filter by channel.")
+
+        query = (
+            query
+            .not_.is_("payload", "null")
+            .gt("created_at", limit)
+            .order("created_at", desc=True)
+            .limit(1)
+        )
+        res = with_supabase_retry(query)
+        return res.data[0] if res.data else None
+    except Exception as e:
+        print(f"  [Recovery] Check failed (non-fatal): {e}")
+        return None
+
 from src.ai.brain import generate_full_package
 from src.ai.tts import generate_voiceover
 from src.media.assets import get_background_videos, get_sfx_urls, get_bgm_url
@@ -116,7 +162,18 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
     print(f"\n--- STARTING PRODUCTION FOR CATEGORY: {category.upper()} (Token: {token_name}) ---")
 
     try:
-        full_package = generate_full_package(category, local_excludes=local_excludes)
+        # ── PRO MOVE: SELF-HEALING RECOVERY ──────────────────────────────────
+        # Check if we have a 'stuck' video in the database for this channel.
+        # This saves Gemini tokens and ensures 100% of generated content is used.
+        recovery_record = find_recovery_record(category)
+        
+        if recovery_record:
+            print(f"♻️  RECOVERY MODE: Resuming failed topic: {recovery_record['topic']}")
+            # We use the saved 'payload' JSON as our full_package
+            full_package = recovery_record['payload']
+        else:
+            print(f"✨ FRESH RUN: Generating new {category} topic with Gemini...")
+            full_package = generate_full_package(category, local_excludes=local_excludes)
         
         topic = full_package['topic']
         search_keyword = full_package['search_keyword']
@@ -215,10 +272,12 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
         if youtube_link:
             try:
                 video_id = youtube_link.split("/")[-1]
+                # Stamp youtube_id AND channel name so dashboard shows US vs Hazy
+                update_payload = {"youtube_id": video_id, "channel": token_name.replace(".json", "")}
                 with_supabase_retry(
-                    supabase.table("videos").update({"youtube_id": video_id}).eq("topic", full_package['topic'])
+                    supabase.table("videos").update(update_payload).eq("topic", full_package['topic'])
                 )
-                print(f"Supabase updated with youtube_id: {video_id}")
+                print(f"Supabase updated — youtube_id: {video_id} | channel: {update_payload['channel']}")
             except Exception as e:
                 print(f"Warning: Failed to save youtube_id to Supabase: {e}")
 
@@ -385,13 +444,16 @@ def start_factory():
             channel_name = futures[future]
             try:
                 topic, title, queued = future.result()
-                if topic:
+                # PRO MOVE: A truthy topic is NOT enough. If it wasn't queued/published, 
+                # we don't consider it a success. This forces the GitHub Action to go RED
+                # so the user knows they need to check the YouTube quota/token.
+                if topic and (queued or title):
                     print(f"\n>>> CHANNEL SUCCESS: {channel_name.upper()} <<<")
                     produced_topics.append(topic)
                     if queued: 
                         queued_titles.append(f"[{channel_name}] {title}")
                 else:
-                    print(f"\n>>> CHANNEL FAILED: {channel_name.upper()} (Returned None) <<<")
+                    print(f"\n>>> CHANNEL FAILED: {channel_name.upper()} (Upload or Render Failed) <<<")
                     overall_success = False
             except Exception as e:
                 print(f"\n>>> CHANNEL CRASHED: {channel_name.upper()} <<<\n{e}")

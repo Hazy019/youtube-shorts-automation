@@ -196,3 +196,7 @@ tiktok_cookies_netscape.txt
 temp_*.mp3
 temp_*.mp4
 test_notifications.py
+# Local Recovery & Manual Tools
+tools/run_us_only.py
+temp_render_us-centric.mp4
+temp_render_general.mp4

@@ -168,8 +168,20 @@ const ZoomingVideo: React.FC<{
   renderSeed: number;
 }> = ({ url, effects, clipDuration, renderSeed }) => {
   const frame = useCurrentFrame();
-  // Continuous cinematic Ken Burns zoom
-  const scale = effects?.zoom ? interpolate(frame, [0, clipDuration], [1.0, 1.12]) : 1;
+  
+  // PRO MOVE: Randomized Ken Burns Direction (In vs Out) based on renderSeed + URL
+  const zoomDirection = random(url + renderSeed) > 0.5 ? 1 : -1;
+  const startScale = zoomDirection === 1 ? 1.0 : 1.15;
+  const endScale = zoomDirection === 1 ? 1.15 : 1.0;
+  
+  const scale = effects?.zoom 
+    ? interpolate(frame, [0, clipDuration], [startScale, endScale], { extrapolateRight: 'clamp' }) 
+    : 1.05;
+
+  // Cinematic Drift: Slow horizontal movement
+  const driftDirection = random(url + "drift" + renderSeed) > 0.5 ? 1 : -1;
+  const driftX = interpolate(frame, [0, clipDuration], [0, 25 * driftDirection]);
+
   const shakeX = frame < 8 && random(url + renderSeed) > 0.5 ? Math.sin(frame * 2) * 6 : 0;
 
   const opacity =
@@ -188,14 +200,16 @@ const ZoomingVideo: React.FC<{
       : 0;
 
   return (
-    <AbsoluteFill style={{ transform: `scale(${scale}) translateX(${shakeX}px)`, opacity }}>
+    <AbsoluteFill style={{ transform: `scale(${scale}) translateX(${shakeX + driftX}px)`, opacity }}>
+      {/* Background Dimmer — PRO MOVE: Ensures text readability without a harsh black box */}
+      <AbsoluteFill style={{ backgroundColor: 'black', opacity: 0.15, zIndex: 1 }} />
       <Video
         src={url}
         muted
         loop
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
       />
-      <AbsoluteFill style={{ backgroundColor: 'white', opacity: flashOpacity }} />
+      <AbsoluteFill style={{ backgroundColor: 'white', opacity: flashOpacity, zIndex: 5 }} />
     </AbsoluteFill>
   );
 };
@@ -236,10 +250,14 @@ const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
       style={{
         justifyContent: 'center',
         alignItems: 'center',
-        padding: '0 40px',
+        padding: '0 50px',
         top: yPos,
+        // PRO MOVE: Safety Bounding Box
+        // Ensures center text never 'bleeds' into the karaoke zone at the bottom
+        maxHeight: '25%', 
         height: 'auto',
         transform: `translateX(${factShakeX}px)`,
+        overflow: 'hidden', // Final safety: crop instead of overlap
       }}
     >
       <h1

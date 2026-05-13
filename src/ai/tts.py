@@ -46,19 +46,18 @@ BUCKET_NAME = os.getenv("BUCKET_NAME")
 MAX_TTS_RETRIES = 3
 
 # ── Edge-TTS voice pool (best-sounding, anti-detection) ─────────────────────
-# REMOVED: GuyNeural — most recognizable/robotic AI voice on YouTube. Huge mistake.
-# ADDED:   SteffanNeural, DavisNeural, TonyNeural, JasonNeural — sound closest to human.
+# REMOVED: JasonNeural, DavisNeural — currently unstable (returning 0 bytes).
+# ADDED:   AvaNeural, EmmaNeural, AndrewNeural — most stable and human in 2026.
 #
 # Tuning philosophy:
 #   Rate:  Slower speech = sounds more human. AI defaults are too fast.
 #   Pitch: Slightly lower = warmer, less sharp/synthetic.
 EDGE_TTS_VOICES = [
-    {"name": "en-US-SteffanNeural",  "rate": "-5%",  "pitch": "-3Hz"},  # BEST: deep, warm storyteller
-    {"name": "en-US-DavisNeural",    "rate": "-3%",  "pitch": "-4Hz"},  # authoritative, dramatic
-    {"name": "en-US-TonyNeural",     "rate": "-5%",  "pitch": "-2Hz"},  # conversational, natural
-    {"name": "en-US-JasonNeural",    "rate": "+2%",  "pitch": "-1Hz"},  # energetic, punchy — gaming
-    {"name": "en-US-AndrewNeural",   "rate": "-3%",  "pitch": "-2Hz"},  # warm backup
-    {"name": "en-US-BrianMultilingualNeural", "rate": "-5%", "pitch": "-2Hz"},  # deliberate, clear
+    {"name": "en-US-AvaNeural",      "rate": "-4%",  "pitch": "-2Hz"},  # EXCELLENT: High retention, clear
+    {"name": "en-US-EmmaNeural",     "rate": "-3%",  "pitch": "-1Hz"},  # GREAT: Natural, conversational
+    {"name": "en-US-AndrewNeural",   "rate": "-5%",  "pitch": "-3Hz"},  # GOOD: Deep, authoritative
+    {"name": "en-US-SteffanNeural",  "rate": "-5%",  "pitch": "-2Hz"},  # GOOD: Storyteller
+    {"name": "en-US-BrianMultilingualNeural", "rate": "-4%", "pitch": "-1Hz"}, # Clear, deliberate
 ]
 
 
@@ -99,16 +98,16 @@ def _pick_edge_voice(category: str, exclude: list = None) -> dict:
     """
     Pick the best Edge-TTS voice for the category, excluding already-tried voices.
     Prioritizes the most human-sounding voices per content type.
-    Gaming: energetic (Jason). General/Science: deep storytelling (Steffan, Davis).
-    US-Centric: dramatic and authoritative (Davis, Tony).
     """
     exclude = exclude or []
     exclude_names = {v["name"] for v in exclude}
 
+    # PRO MOVE: Channel Identity Isolation
+    # Hazy US gets 'Ava' (Modern/Fast) | Hazy Insight gets 'Emma' or 'Steffan' (Storytelling)
     if category == "us-centric":
-        pool = [v for v in EDGE_TTS_VOICES if ("Davis" in v["name"] or "Tony" in v["name"]) and v["name"] not in exclude_names]
+        pool = [v for v in EDGE_TTS_VOICES if "Ava" in v["name"] and v["name"] not in exclude_names]
     else:
-        pool = [v for v in EDGE_TTS_VOICES if ("Steffan" in v["name"] or "Tony" in v["name"] or "Brian" in v["name"]) and v["name"] not in exclude_names]
+        pool = [v for v in EDGE_TTS_VOICES if ("Emma" in v["name"] or "Steffan" in v["name"]) and v["name"] not in exclude_names]
 
     # If preferred pool is exhausted, fall back to any remaining voice
     if not pool:

@@ -104,9 +104,13 @@ jobs:
       - name: Install Python Requirements
         run: pip install -r requirements.txt
 
-      # API Pre-flight — blocks factory if Pexels/ElevenLabs keys are dead (saves Gemini tokens)
+      # API Pre-flight — blocks factory if Pexels keys are dead (saves Gemini tokens)
       - name: Verify APIs (Pre-flight)
         run: python verify_apis.py
+
+      # Database Sanitation
+      - name: Clean Ghost Records
+        run: python tools/clean_ghost_records.py
 
       # Main Factory
       - name: Run Factory

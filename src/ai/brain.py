@@ -319,7 +319,21 @@ V9. NEVER use these phrases in the hook voiceover — they sound awkward when sp
     Any opener that sounds like a correction rather than a confident revelation.
 
 ══════════════════════════════════════════════════════════
-PART 3 — PRODUCTION RULES
+PART 4 — THE "ANTI-AI SLOP" PROTOCOL (CONTENT QUALITY)
+══════════════════════════════════════════════════════════
+To keep this content looking human and professional, you are FORBIDDEN from using "AI Slop" words.
+
+S1. FORBIDDEN WORDS (Delete these from your vocabulary):
+    Unleash, Delve, Uncover, Secrets, Mysterious, Testament, Shrouded, Landscape, 
+    Embark, Journey, Realm, Tapestry, Vibrant, Elevate, Revolutionize, 
+    At the heart of, In the world of, Look no further.
+
+S2. Use "Spoken English" only. Avoid formal academic structures.
+    Instead of "The discovery revolutionized the field," use "This changed everything."
+    Instead of "It is a testament to his skill," use "It shows just how good he was."
+
+══════════════════════════════════════════════════════════
+PART 5 — PRODUCTION RULES
 ══════════════════════════════════════════════════════════
 
 R1.  topic ends in "..." — triggers curiosity or disbelief.
@@ -341,18 +355,14 @@ R12. SEGMENT 0 (Hook):
      - end <= 3.0s
      - text_effect = "pop", position = "top"
      - Voiceover max 15 words with an ellipsis mid-sentence for breath
-     - CRITICAL: The hook opener MUST sound completely natural when spoken aloud.
-       Test: read it out loud. If it sounds like someone changed their mind or
-       lost track mid-sentence, it FAILS. Every opener must feel like a
-       deliberate, confident spoken statement.
-     - MUST use ONE of these proven openers — ROTATE every video, never repeat:
-       "Nobody noticed...", "For years...", "Hidden inside...",
-       "This should be impossible...", "They never told you...",
-       "It happened overnight...", "Most people get this wrong...",
-       "The government actually...", "Science just confirmed...",
-       "Right before it disappeared...", "Everybody missed this...",
-       "Nobody talks about this...", "Something strange happened...",
-       "Here's what they hid...", "It was buried for decades..."
+     - MUST synthesize a UNIQUE hook based on the topic. NEVER use a generic template.
+     - HOOK FORMULA: [Pattern Interrupt] + [High Stakes Claim] + [Unsolved Mystery].
+     - EXAMPLES OF TONE (Do not copy these, use the VIBE):
+       "Everyone thinks [X] is true, but the reality is terrifying..."
+       "I shouldn't be telling you this, but they just found [X]..."
+       "This feels illegal to know, but [X] has been hidden for decades..."
+       "Nobody noticed for ten years, but [X] was right in front of us..."
+     - Every hook MUST be specific to the video's actual topic. If the topic is about Space, the hook MUST mention space/cosmos/NASA immediately.
 R13. SEGMENT 1 (Tease):
      - text_effect = "typewriter", position = "center"
      - Must contain "stay till the end" or equivalent retention phrase
@@ -481,17 +491,19 @@ def generate_full_package(category, local_excludes=None):
                     used_topics.append(package.get("topic"))
                     break
 
-                # Persist to Supabase (non-fatal if it fails)
+                # Persist to Supabase (Enables Self-Healing Recovery)
                 db = _get_supabase()
                 if db:
                     try:
                         full_script = " ".join(s["voiceover"] for s in package["segments"])
                         with_supabase_retry(
                             db.table("videos").insert({
-                                "topic":  package["topic"],
-                                "title":  package["title"],
-                                "script": full_script,
-                                "tiktok_status": "INITIALIZED", # Prevent auto-queuing before render
+                                "topic":    package["topic"],
+                                "title":    package["title"],
+                                "script":   full_script,
+                                "category": category, # Pro Move: Isolated channel recovery
+                                "payload":  package,  # Pro Move: Full recovery of timing/keywords
+                                "tiktok_status": "INITIALIZED", 
                             })
                         )
                     except Exception as e:

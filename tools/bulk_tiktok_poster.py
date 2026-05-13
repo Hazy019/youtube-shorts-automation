@@ -60,7 +60,13 @@ def drain_tiktok_queue():
         print("Queue is empty! No pending TikTok uploads found.")
         return
         
-    print(f"Found {len(queue)} pending TikTok uploads in the queue.\n")
+    # PRO MOVE: Limit posts per run to protect account reputation and avoid shadowbans.
+    MAX_POSTS_PER_RUN = 3 
+    if len(queue) > MAX_POSTS_PER_RUN:
+        print(f"Found {len(queue)} pending, but LIMITING to {MAX_POSTS_PER_RUN} for account safety.")
+        queue = queue[:MAX_POSTS_PER_RUN]
+    else:
+        print(f"Found {len(queue)} pending TikTok uploads in the queue.\n")
 
     total_uploaded = 0
 
