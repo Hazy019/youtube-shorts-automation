@@ -5,6 +5,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import os
 import requests
 import traceback
+import boto3
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
@@ -37,6 +39,32 @@ def download_video(url: str, output_path: str) -> bool:
         print(f"Failed to download video: {e}")
         return False
 
+def extract_s3_key(url):
+    """Extract object key from a pre-signed or direct S3 URL."""
+    try:
+        path = urlparse(url).path
+        return path.lstrip('/')
+    except:
+        return None
+
+def delete_s3_video(url: str):
+    """Delete the video from AWS S3."""
+    key = extract_s3_key(url)
+    if not key: return
+    
+    bucket = os.getenv("BUCKET_NAME")
+    if not bucket:
+        print("Warning: BUCKET_NAME not set. S3 cleanup skipped.")
+        return
+
+    print(f"  ACTION: Deleting video from S3 bucket: {key}")
+    try:
+        s3 = boto3.client("s3")
+        s3.delete_object(Bucket=bucket, Key=key)
+        print(f"  ✓ S3 Cleanup successful.")
+    except Exception as e:
+        print(f"  ⚠ S3 Cleanup failed: {e}")
+
 def drain_tiktok_queue():
     print("="*40)
     print("TIKTOK SUPABASE RETRY QUEUE MANAGER (LIBRARY VERSION)")
@@ -50,7 +78,9 @@ def drain_tiktok_queue():
     # Fetch queued items
     try:
         resp = db.table("videos").select("Topic:topic, id, s3_video_url, tiktok_description")\
-                .eq("tiktok_status", "PENDING").execute()
+                .eq("tiktok_status", "PENDING")\
+                .order("id", desc=True)\
+                .execute()
     except Exception as e:
         print(f"Supabase query failed: {e}")
         return
@@ -140,6 +170,9 @@ def drain_tiktok_queue():
                 db.table("videos").update({"tiktok_status": "SUCCESS"}).eq("id", video_id).execute()
                 total_uploaded += 1
                 ping_tiktok_success(topic)
+                
+                # S3 PURGE: Delete from AWS now that it's on TikTok
+                delete_s3_video(s3_url)
                 
         except Exception as e:
             print(f"Upload flow crashed for {topic}: {e}")

@@ -146,15 +146,13 @@ def make_cloud_video(
     if total_frames < 150:
         return None, f"Video too short: {total_frames} frames (min 150)"
 
-    # SAFETY CHUNKING (v15-SEQUENTIAL): 
-    # We run sequentially now, so 300f chunks will not time out.
-    # Increasing this to 300 reduces the number of chunks by half, keeping us
-    # safely under the AWS 10-Lambda concurrency limit for new accounts.
-    frames_per_lambda = min(total_frames, 300)
+    # Increasing this to 450 reduces chunk count and avoids AWS "Rate Exceeded" concurrency limits.
+    # 450 frames (15s) is well within the 900s Lambda timeout.
+    frames_per_lambda = min(total_frames, 450)
     chunk_count = math.ceil(total_frames / frames_per_lambda)
     print(f"  Render plan: {total_frames} frames → {chunk_count} chunk(s) of {frames_per_lambda}f (Safety Chunking v13.5-ENFORCED)", flush=True)
 
-    if chunk_count >= 8:
+    if chunk_count >= 5:
         print(f"  WARNING: High chunk count ({chunk_count}). Stitcher may time out. Consider increasing Lambda Timeout or simplifying the video.", flush=True)
 
     bgm_volume = 0.15 if category == "gaming" else 0.12

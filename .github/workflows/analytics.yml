@@ -20,7 +20,7 @@ jobs:
 
       - name: Recreate Auth Tokens
         run: |
-          echo '${{ secrets.YOUTUBE_TOKEN_JSON }}' > token_youtube.json
+          echo '${{ secrets.TOKEN_YOUTUBE_HAZY }}' > token_youtube.json
 
       - name: Create Environment Variables
         run: |

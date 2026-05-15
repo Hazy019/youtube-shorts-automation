@@ -52,13 +52,11 @@ def check_environment():
     try:
         r = requests.head(serve_url, timeout=10)
         if r.status_code == 403:
-            print(f"FATAL: Remotion SERVE_URL returned 403 Forbidden.")
-            print("ACTION: Your Remotion bundle is either not deployed or S3 permissions are restricted.")
-            print(f"URL: {serve_url}")
-            sys.exit(1)
+            print(f"WARNING: Remotion SERVE_URL returned 403 Forbidden.")
+            print("ACTION: Your Remotion bundle is either not deployed or S3 permissions block public access.")
+            print("Continuing anyway, as Lambda might still have access internally.")
         elif r.status_code >= 400:
-            print(f"FATAL: Remotion SERVE_URL returned status {r.status_code}.")
-            sys.exit(1)
+            print(f"WARNING: Remotion SERVE_URL returned status {r.status_code}. Continuing anyway.")
     except Exception as e:
         print(f"FATAL: Failed to reach Remotion SERVE_URL: {e}")
         sys.exit(1)
@@ -135,6 +133,7 @@ from src.media.builder import make_cloud_video
 from src.api.youtube import upload_video
 from src.api.meta import MetaAPI
 from src.utils.discord import ping_error, ping_creator, ping_render_start, ping_queue
+from src.utils.meta_healer import perform_meta_recovery
 
 def extract_s3_key(url):
     """Extract object key from a pre-signed or direct S3 URL."""
@@ -394,6 +393,14 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
 
 def start_factory():
     print("HAZY MULTI-CHANNEL FACTORY STARTING (PARALLEL v14)...\n" + "="*40)
+    
+    # --- PHASE 0: AUTONOMOUS SELF-HEALING ------------------------------------
+    # Automatically fix any failed Meta uploads from previous runs
+    try:
+        perform_meta_recovery()
+    except Exception as e:
+        print(f"⚠️ Self-Healing Phase Warning: {e}")
+    # -------------------------------------------------------------------------
     
     # Define channel configurations — 2 accounts, 2 videos per run
     channels = [

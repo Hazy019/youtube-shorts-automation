@@ -65,8 +65,6 @@ jobs:
           echo "WEBHOOK_QUEUE=${{ secrets.WEBHOOK_QUEUE || secrets.DISCORD_WEBHOOK_URL }}"       >> .env
           echo "WEBHOOK_INSIGHTS=${{ secrets.WEBHOOK_INSIGHTS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
           echo "DISCORD_PING_USER_ID=${{ secrets.DISCORD_PING_USER_ID }}" >> .env
-          echo "TIKTOK_COOKIES_JSON=${{ secrets.TIKTOK_COOKIES_JSON }}"   >> .env
-          echo "TIKTOK_COOKIES_TXT=${{ secrets.TIKTOK_COOKIES_TXT }}"     >> .env
           echo "META_PAGE_ACCESS_TOKEN=${{ secrets.META_PAGE_ACCESS_TOKEN }}" >> .env
           echo "META_PAGE_ID=${{ secrets.META_PAGE_ID }}"                 >> .env
           echo "META_INSTAGRAM_ID=${{ secrets.META_INSTAGRAM_ID }}"       >> .env
@@ -86,6 +84,8 @@ jobs:
           [ -z "${{ secrets.PEXELS_API_KEY }}"          ] && MISSING+=("PEXELS_API_KEY")
           [ -z "${{ secrets.TOKEN_YOUTUBE_HAZY }}"      ] && MISSING+=("TOKEN_YOUTUBE_HAZY")
           [ -z "${{ secrets.TOKEN_YOUTUBE_US }}"        ] && MISSING+=("TOKEN_YOUTUBE_US")
+          [ -z "${{ secrets.DRIVE_TOKEN_JSON }}"        ] && MISSING+=("DRIVE_TOKEN_JSON")
+          [ -z "${{ secrets.CLIENT_SECRETS_JSON }}"     ] && MISSING+=("CLIENT_SECRETS_JSON")
           if [ ${#MISSING[@]} -gt 0 ]; then
             echo "::error::Missing critical secrets: ${MISSING[*]}"
             exit 1
@@ -106,11 +106,11 @@ jobs:
 
       # API Pre-flight — blocks factory if Pexels keys are dead (saves Gemini tokens)
       - name: Verify APIs (Pre-flight)
-        run: python verify_apis.py
+        run: python tools/verify_apis.py
 
       # Database Sanitation
       - name: Clean Ghost Records
-        run: python tools/clean_ghost_records.py
+        run: python tools/queue_manager.py clean-ghosts
 
       # Main Factory
       - name: Run Factory
