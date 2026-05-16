@@ -97,9 +97,9 @@ export async function POST(req: NextRequest) {
       ? history.slice(-RATE_LIMIT.MAX_HISTORY)
       : [];
 
-    // 6. Call Gemini with Fallback Models
+    // 6. Call Gemini with Fallback Models (only current, valid models)
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
     let reply = null;
     let lastError: any = null;
 
@@ -138,9 +138,9 @@ export async function POST(req: NextRequest) {
 
   } catch (err: any) {
     console.error('[chat API fatal error]', err);
-    // Return detailed debug info for the user
+    // Return a friendly message — never expose raw API errors to users
     return NextResponse.json({
-      reply: `I'm having trouble connecting right now. Debug Info: ${err.message || 'Unknown error'}`
+      reply: "I'm having a brief connectivity issue. Please try again in a moment."
     }, { status: 200 });
   }
 }

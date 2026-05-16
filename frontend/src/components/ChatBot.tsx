@@ -130,56 +130,57 @@ export default function ChatBot() {
               height: '540px',
               display: 'flex', flexDirection: 'column',
               zIndex: 101, borderRadius: '1.25rem', overflow: 'hidden',
-              background: 'rgba(6, 6, 10, 0.95)',
-              border: '1px solid rgba(139,92,246,0.22)',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04), 0 0 60px rgba(139,92,246,0.08)',
+              background: 'var(--nav-bg)',
+              border: '1px solid var(--card-border)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 60px rgba(139,92,246,0.1)',
               backdropFilter: 'blur(28px)',
             }}
           >
             {/* Header */}
             <div style={{
               padding: '0.875rem 1.125rem',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
+              borderBottom: '1px solid var(--card-border)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               background: 'linear-gradient(180deg, rgba(139,92,246,0.1) 0%, transparent 100%)',
+              background: 'var(--background)',
               flexShrink: 0,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                 <div style={{ position: 'relative' }}>
                   <div style={{
                     width: '32px', height: '32px', borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #8b5cf6, #d946ef)',
+                    background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 0 14px rgba(139,92,246,0.5)',
+                    color: 'white'
                   }}>
                     <Zap size={14} color="white" />
                   </div>
                   <div style={{
                     position: 'absolute', bottom: 0, right: '-1px',
                     width: '9px', height: '9px', borderRadius: '50%',
-                    background: '#22c55e', border: '2px solid rgba(6,6,10,0.95)',
+                    background: '#22c55e', border: '2px solid var(--background)',
                     boxShadow: '0 0 6px rgba(34,197,94,0.8)',
                   }} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'white', lineHeight: 1.2 }}>Hazy AI</div>
-                  <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.04em' }}>
+                  <h3 className="display-font" style={{ fontSize: '0.95rem', color: 'var(--foreground)', margin: 0 }}>Hazy AI</h3>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--foreground-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     Factory Intelligence · Online
                   </div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {remaining !== null && remaining <= 3 && (
-                  <span style={{ fontSize: '0.65rem', color: 'rgba(217,70,239,0.7)', fontWeight: 600 }}>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--secondary)', fontWeight: 600 }}>
                     {remaining} left
                   </span>
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
                   style={{
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--card-bg)', border: '1px solid var(--card-border)',
                     borderRadius: '8px', padding: '0.375rem',
-                    color: 'rgba(255,255,255,0.45)', cursor: 'pointer',
+                    color: 'var(--foreground-muted)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'all 0.2s',
                   }}
@@ -206,11 +207,12 @@ export default function ChatBot() {
                     padding: '0.6rem 0.9rem',
                     borderRadius: msg.role === 'user' ? '14px 14px 3px 14px' : '3px 14px 14px 14px',
                     background: msg.role === 'user'
-                      ? 'linear-gradient(135deg, #8b5cf6, #d946ef)'
-                      : 'rgba(255,255,255,0.055)',
-                    border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                    fontSize: '0.845rem', lineHeight: 1.55, color: 'white',
-                    boxShadow: msg.role === 'user' ? '0 4px 16px rgba(139,92,246,0.3)' : 'none',
+                      ? 'linear-gradient(135deg, var(--primary), var(--secondary))'
+                      : 'var(--card-bg)',
+                    color: msg.role === 'user' ? 'white' : 'var(--foreground)',
+                    border: msg.role === 'user' ? 'none' : '1px solid var(--card-border)',
+                    fontSize: '0.845rem', lineHeight: 1.55,
+                    boxShadow: msg.role === 'user' ? '0 4px 15px rgba(139,92,246,0.3)' : 'none',
                     whiteSpace: 'pre-wrap',
                   }}>
                     {msg.text}
@@ -227,8 +229,8 @@ export default function ChatBot() {
                 >
                   <div style={{
                     padding: '0.7rem 1rem', borderRadius: '3px 14px 14px 14px',
-                    background: 'rgba(255,255,255,0.055)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--card-bg)',
+                    border: '1px solid var(--card-border)',
                     display: 'flex', gap: '4px', alignItems: 'center',
                   }}>
                     {[0, 1, 2].map(d => (
@@ -236,64 +238,29 @@ export default function ChatBot() {
                         key={d}
                         animate={{ opacity: [0.25, 1, 0.25], y: [0, -3, 0] }}
                         transition={{ duration: 1.1, repeat: Infinity, delay: d * 0.18, ease: 'easeInOut' }}
-                        style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#8b5cf6' }}
+                        style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--primary)' }}
                       />
                     ))}
                   </div>
                 </motion.div>
               )}
 
-              {/* Suggested prompts — visible only before first user message */}
-              <AnimatePresence>
-                {showSuggestions && !isLoading && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.25 }}
-                    style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}
-                  >
-                    {SUGGESTED_PROMPTS.map((prompt, i) => (
-                      <motion.button
-                        key={i}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.07 }}
-                        onClick={() => handleSend(prompt)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '0.4rem',
-                          background: 'rgba(139,92,246,0.08)',
-                          border: '1px solid rgba(139,92,246,0.18)',
-                          borderRadius: '8px', padding: '0.45rem 0.7rem',
-                          color: 'rgba(255,255,255,0.7)', fontSize: '0.775rem',
-                          cursor: 'pointer', textAlign: 'left',
-                          transition: 'all 0.18s',
-                        }}
-                        whileHover={{ background: 'rgba(139,92,246,0.18)', color: 'white' }}
-                      >
-                        <ChevronRight size={11} style={{ flexShrink: 0, color: '#8b5cf6' }} />
-                        {prompt}
-                      </motion.button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input area */}
-            <div style={{
-              padding: '0.75rem',
-              borderTop: '1px solid rgba(255,255,255,0.05)',
-              display: 'flex', flexDirection: 'column', gap: '0.375rem',
-              flexShrink: 0,
-            }}>
+            <div style={{ padding: '0.75rem 1.125rem', borderTop: '1px solid var(--card-border)', flexShrink: 0, position: 'relative' }}>
+              {showSuggestions && messages.length < 2 && (
+                <div style={{ position: 'absolute', bottom: '100%', left: '0.75rem', right: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  {SUGGESTED_PROMPTS.map(p => (
+                    <button key={p} onClick={() => handleSend(p)} style={{ fontSize: '0.72rem', padding: '0.35rem 0.75rem', borderRadius: '999px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--foreground-muted)', cursor: 'pointer', transition: 'all 0.2s' }}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
               {isRateLimited ? (
-                <div style={{
-                  textAlign: 'center', fontSize: '0.78rem',
-                  color: 'rgba(217,70,239,0.7)', padding: '0.5rem',
-                }}>
+                <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--secondary)', padding: '0.5rem' }}>
                   ⏱ Rate limit reached. Please wait a few minutes.
                 </div>
               ) : (
@@ -313,10 +280,10 @@ export default function ChatBot() {
                       rows={1}
                       maxLength={MAX_CHARS}
                       style={{
-                        flex: 1, background: 'rgba(255,255,255,0.05)',
-                        border: `1px solid ${isOverLimit ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                        flex: 1, background: 'var(--card-bg)',
+                        border: `1px solid ${isOverLimit ? '#ef4444' : 'var(--card-border)'}`,
                         borderRadius: '10px', padding: '0.6rem 0.8rem',
-                        color: 'white', outline: 'none', fontSize: '0.845rem',
+                        color: 'var(--foreground)', outline: 'none', fontSize: '0.845rem',
                         resize: 'none', lineHeight: 1.5, fontFamily: 'inherit',
                         transition: 'border-color 0.2s',
                         minHeight: '38px', maxHeight: '90px',
@@ -329,8 +296,8 @@ export default function ChatBot() {
                       disabled={isLoading || isCooldown || !input.trim() || isOverLimit}
                       style={{
                         background: isLoading || isCooldown || !input.trim() || isOverLimit
-                          ? 'rgba(139,92,246,0.25)'
-                          : 'linear-gradient(135deg, #8b5cf6, #d946ef)',
+                          ? 'var(--foreground-subtle)'
+                          : 'linear-gradient(135deg, var(--primary), var(--secondary))',
                         color: 'white', border: 'none', borderRadius: '10px',
                         width: '38px', height: '38px', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -345,7 +312,7 @@ export default function ChatBot() {
                   {isNearLimit && (
                     <div style={{
                       fontSize: '0.68rem', textAlign: 'right',
-                      color: isOverLimit ? 'rgba(239,68,68,0.8)' : 'rgba(255,255,255,0.3)',
+                      color: isOverLimit ? '#ef4444' : 'var(--foreground-muted)',
                       transition: 'color 0.2s',
                     }}>
                       {charsLeft} characters remaining

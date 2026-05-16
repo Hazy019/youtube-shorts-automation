@@ -248,7 +248,9 @@ button { font-family: inherit; }
 
 @media (max-width: 768px) {
   .pill-nav {
-    grid-template-columns: auto 1fr !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
     border-radius: 999px !important;
     padding: 0.6rem 1rem !important;
     gap: 0.5rem;

@@ -183,19 +183,19 @@ export default function Home() {
             WE BUILD<br /><span className="text-gradient-primary">MACHINES.</span>
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            style={{ marginTop: '2.5rem', color: 'rgba(255,255,255,0.45)', maxWidth: '34rem', margin: '2.5rem auto 0', fontSize: 'clamp(1rem,2.5vw,1.2rem)', fontWeight: 300, lineHeight: 1.7 }}>
+            style={{ marginTop: '2.5rem', color: 'var(--foreground-muted)', maxWidth: '34rem', margin: '2.5rem auto 0', fontSize: 'clamp(1rem,2.5vw,1.2rem)', fontWeight: 300, lineHeight: 1.7 }}>
             Not just another content generator. We engineer intelligent, high-retention video systems that operate 24/7 — without local hardware or human intervention.
           </motion.p>
         </motion.div>
       </section>
 
       {/* ─── TICKER ─── */}
-      <div style={{ padding: '1.75rem 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)', zIndex: 20, position: 'relative' }}>
+      <div style={{ padding: '1.75rem 0', borderTop: '1px solid var(--card-border)', borderBottom: '1px solid var(--card-border)', overflow: 'hidden', background: 'var(--card-bg)', backdropFilter: 'blur(12px)', zIndex: 20, position: 'relative' }}>
         <div className="ticker-track">
           {[...Array(2)].map((_, i) => (
             <div key={i} style={{ display: 'flex', gap: '3rem', alignItems: 'center', flexShrink: 0, paddingRight: '3rem' }}>
               {['YouTube Shorts', 'TikTok', 'Meta Reels', 'AWS Lambda', 'Gemini AI', 'GitHub Actions', 'Supabase'].map((t, j) => (
-                <span key={j} className="display-font" style={{ fontSize: '2rem', color: 'rgba(255,255,255,0.18)', textTransform: 'uppercase', letterSpacing: '-0.04em', flexShrink: 0 }}>
+                <span key={j} className="display-font" style={{ fontSize: '2rem', color: 'var(--foreground-subtle)', textTransform: 'uppercase', letterSpacing: '-0.04em', flexShrink: 0 }}>
                   {t}&nbsp;<span style={{ opacity: 0.5 }}>·</span>
                 </span>
               ))}
@@ -224,10 +224,10 @@ export default function Home() {
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
             style={{ paddingTop: '2rem' }}
           >
-            <div className="display-font" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', color: 'white', lineHeight: 1.15, marginBottom: '1.75rem' }}>
+            <div className="display-font" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', color: 'var(--foreground)', lineHeight: 1.15, marginBottom: '1.75rem' }}>
               <RevealText text="We removed the human bottleneck from production." />
             </div>
-            <p style={{ fontSize: '1.3rem', color: 'rgba(255,255,255,0.5)', maxWidth: '40rem', fontWeight: 300, lineHeight: 1.7 }}>
+            <p style={{ fontSize: '1.3rem', color: 'var(--foreground-muted)', maxWidth: '40rem', fontWeight: 300, lineHeight: 1.7 }}>
               The Hazy Factory researches, writes, voices, renders, and distributes content entirely autonomously. It is not a tool. It is a highly scalable, serverless digital studio.
             </p>
           </motion.div>
@@ -235,15 +235,15 @@ export default function Home() {
       </section>
 
       {/* ─── INTEGRITY ─── */}
-      <section id="integrity" style={{ padding: '9rem 1.5rem', backgroundColor: '#050505', position: 'relative', overflow: 'hidden' }}>
+      <section id="integrity" style={{ padding: '9rem 1.5rem', backgroundColor: 'var(--background)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '50%', right: '-10%', width: '500px', height: '500px', background: 'rgba(139,92,246,0.07)', borderRadius: '50%', filter: 'blur(100px)' }} />
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <motion.div {...ANIM_SLIDE_RIGHT} style={{ marginBottom: '5rem' }}>
             <span style={{ color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '1rem' }}>( System Integrity )</span>
-            <div className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white', marginBottom: '1.25rem' }}>
+            <div className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'var(--foreground)', marginBottom: '1.25rem' }}>
               <RevealText text="Verifiable Precision." />
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.38)', maxWidth: '38rem', fontSize: '1.1rem', lineHeight: 1.7 }}>
+            <p style={{ color: 'var(--foreground-muted)', maxWidth: '38rem', fontSize: '1.1rem', lineHeight: 1.7 }}>
               Every claim here is backed by observable system behaviour — not marketing copy. These are measurable properties of the pipeline, not projections.
             </p>
           </motion.div>
@@ -255,9 +255,9 @@ export default function Home() {
                 transition={{ ...ANIM_SCALE_IN.transition, delay: i * 0.1 }}
                 className="glass hover-glow group" style={{ padding: '2.5rem 2rem', borderRadius: '1.25rem' }}>
                 <div className="display-font text-gradient-primary" style={{ fontSize: '3.5rem', lineHeight: 1, marginBottom: '0.75rem' }}>{card.stat}</div>
-                <h3 style={{ fontSize: '1.15rem', color: 'white', marginBottom: '0.5rem', fontWeight: 600 }}>{card.label}</h3>
-                <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1rem' }}>{card.sub}</p>
-                <div style={{ fontSize: '0.75rem', color: 'rgba(139,92,246,0.7)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.75rem' }}>
+                <h3 style={{ fontSize: '1.15rem', color: 'var(--foreground)', marginBottom: '0.5rem', fontWeight: 600 }}>{card.label}</h3>
+                <p style={{ color: 'var(--foreground-muted)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1rem' }}>{card.sub}</p>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(139,92,246,0.7)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderTop: '1px solid var(--card-border)', paddingTop: '0.75rem' }}>
                   ↳ {card.note}
                 </div>
               </motion.div>
@@ -277,7 +277,7 @@ export default function Home() {
             style={{ textAlign: 'center', marginBottom: '4rem' }}
           >
             <span style={{ color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '1rem' }}>( Output )</span>
-            <h2 className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white' }}>The Results.</h2>
+            <h2 className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'var(--foreground)' }}>The Results.</h2>
           </motion.div>
           
           {/* Scroll-linked scale parallax for video container */}
@@ -287,8 +287,8 @@ export default function Home() {
               borderRadius: '1.5rem', overflow: 'hidden', padding: 'clamp(1rem,3vw,2rem)', 
               aspectRatio: '16/9', maxWidth: '56rem', margin: '0 auto', 
               boxShadow: '0 0 80px rgba(139,92,246,0.15)',
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.05)',
+              background: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
               backdropFilter: 'blur(20px)'
             }}>
             <iframe width="100%" height="100%"
@@ -301,11 +301,11 @@ export default function Home() {
       </section>
 
       {/* ─── PIPELINE ─── */}
-      <section id="machine" style={{ padding: '9rem 1.5rem', backgroundColor: '#0a0a0a', position: 'relative', overflow: 'hidden' }}>
+      <section id="machine" style={{ padding: '9rem 1.5rem', backgroundColor: 'var(--card-bg)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', bottom: '20%', left: '-5%', width: '400px', height: '400px', background: 'rgba(139,92,246,0.08)', borderRadius: '50%', filter: 'blur(90px)' }} />
         <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '5rem', gap: '2rem' }}>
-            <motion.h2 {...ANIM_SLIDE_LEFT} className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white', margin: 0 }}>
+            <motion.h2 {...ANIM_SLIDE_LEFT} className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'var(--foreground)', margin: 0 }}>
               The <br /><span className="text-gradient">Pipeline</span>
             </motion.h2>
             <motion.p {...ANIM_SLIDE_RIGHT} transition={{ ...ANIM_SLIDE_RIGHT.transition, delay: 0.1 }} style={{ color: 'rgba(255,255,255,0.38)', maxWidth: '22rem', fontSize: '1.1rem', margin: 0 }}>
@@ -322,9 +322,9 @@ export default function Home() {
                 className="glass group hover-glow"
                 style={{ padding: '2rem 1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--background)', position: 'relative', cursor: 'default' }}>
                 <div style={{ fontSize: '1.75rem', lineHeight: 1 }}>{step.icon}</div>
-                <div className="display-font group-hover-primary" style={{ color: 'rgba(255,255,255,0.18)', fontSize: '1rem', transition: 'color 0.3s' }}>{step.num}</div>
-                <h3 className="display-font" style={{ fontSize: '1.4rem', color: 'white', margin: 0 }}>{step.title}</h3>
-                <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>{step.desc}</p>
+                <div className="display-font group-hover-primary" style={{ color: 'var(--foreground-subtle)', fontSize: '1rem', transition: 'color 0.3s' }}>{step.num}</div>
+                <h3 className="display-font" style={{ fontSize: '1.4rem', color: 'var(--foreground)', margin: 0 }}>{step.title}</h3>
+                <p style={{ color: 'var(--foreground-muted)', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>{step.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -332,7 +332,7 @@ export default function Home() {
       </section>
 
       {/* ─── METRICS ─── */}
-      <section style={{ padding: '9rem 0', borderTop: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+      <section style={{ padding: '9rem 0', borderTop: '1px solid var(--card-border)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '700px', height: '280px', background: 'rgba(217,70,239,0.05)', filter: 'blur(90px)', borderRadius: '50%', pointerEvents: 'none' }} />
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '4rem', textAlign: 'center', position: 'relative', zIndex: 1 }}>
           {[
@@ -344,23 +344,23 @@ export default function Home() {
               transition={{ ...ANIM_RISE.transition, delay: i * 0.2 }}
               style={{ transformPerspective: 800 }}
             >
-              <div className="display-font" style={{ fontSize: 'clamp(4rem,10vw,7.5rem)', color: 'white', letterSpacing: '-0.05em' }}>
+              <div className="display-font" style={{ fontSize: 'clamp(4rem,10vw,7.5rem)', color: 'var(--foreground)', letterSpacing: '-0.05em' }}>
                 {m.value}<span style={{ color: m.color }}>{m.accent}</span>{m.suffix}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.8rem', fontWeight: 700, marginTop: '0.75rem' }}>{m.label}</div>
+              <div style={{ color: 'var(--foreground-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.8rem', fontWeight: 700, marginTop: '0.75rem' }}>{m.label}</div>
             </motion.div>
           ))}
         </div>
       </section>
 
       {/* ─── CONTACT ─── */}
-      <section id="contact" style={{ padding: '9rem 1.5rem', backgroundColor: '#050505', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+      <section id="contact" style={{ padding: '9rem 1.5rem', backgroundColor: 'var(--background)', borderTop: '1px solid var(--card-border)' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
           <motion.div {...ANIM_BLUR_UP}>
-            <h2 className="display-font" style={{ fontSize: 'clamp(3rem,8vw,5rem)', color: 'white', marginBottom: '1.25rem', lineHeight: 1 }}>
+            <h2 className="display-font" style={{ fontSize: 'clamp(3rem,8vw,5rem)', color: 'var(--foreground)', marginBottom: '1.25rem', lineHeight: 1 }}>
               Scale Your <br /><span className="text-gradient-primary">Vision.</span>
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '1.15rem', maxWidth: '30rem', margin: '0 auto 3rem', lineHeight: 1.7 }}>
+            <p style={{ color: 'var(--foreground-muted)', fontSize: '1.15rem', maxWidth: '30rem', margin: '0 auto 3rem', lineHeight: 1.7 }}>
               Stop managing creators. Start managing infrastructure. Drop your email and let's talk about what the factory can build for you.
             </p>
 
@@ -375,7 +375,7 @@ export default function Home() {
                   whileFocus={{ scale: 1.02, borderColor: 'rgba(139,92,246,0.5)', boxShadow: '0 0 0 4px rgba(139,92,246,0.1)' }}
                   type="email" required value={email} onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  style={{ flex: '1 1 220px', maxWidth: '320px', padding: '0.875rem 1.25rem', borderRadius: '999px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', fontSize: '1rem', outline: 'none', transition: 'all 0.2s ease' }}
+                  style={{ flex: '1 1 220px', maxWidth: '320px', padding: '0.875rem 1.25rem', borderRadius: '999px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '1rem', outline: 'none', transition: 'all 0.2s ease' }}
                 />
                 <motion.button type="submit" 
                   whileHover={{ scale: 1.05, boxShadow: '0 8px 30px rgba(255,255,255,0.3)' }} 
@@ -394,8 +394,8 @@ export default function Home() {
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer style={{ padding: '2.5rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.28)', fontSize: '0.85rem' }}>
-        <div className="display-font" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.45)' }}>HAZY.</div>
+      <footer style={{ padding: '2.5rem 1.5rem', borderTop: '1px solid var(--card-border)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', color: 'var(--foreground-muted)', fontSize: '0.85rem' }}>
+        <div className="display-font" style={{ fontSize: '1.2rem', color: 'var(--foreground-muted)' }}>HAZY.</div>
         <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
           <a href="/docs" className="nav-link" style={{ fontSize: '0.8rem' }}>Documentation</a>
           <p style={{ margin: 0 }}>© 2026 Designed for scale. Built for performance.</p>
