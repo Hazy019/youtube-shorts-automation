@@ -141,7 +141,6 @@ export default function ChatBot() {
               padding: '0.875rem 1.125rem',
               borderBottom: '1px solid var(--card-border)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              background: 'linear-gradient(180deg, rgba(139,92,246,0.1) 0%, transparent 100%)',
               background: 'var(--background)',
               flexShrink: 0,
             }}>
