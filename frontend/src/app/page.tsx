@@ -4,13 +4,33 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
 import ChatBot from '@/components/ChatBot';
 
-// Distinct animation presets — each section gets a unique entrance
-const FADE_UP = { initial: { opacity: 0, y: 48 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.75, ease: [0.16, 1, 0.3, 1] } };
-const FADE_LEFT = { initial: { opacity: 0, x: -56, filter: 'blur(6px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true }, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } };
-const FADE_RIGHT = { initial: { opacity: 0, x: 56, filter: 'blur(6px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true }, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } };
-const SCALE_IN = { initial: { opacity: 0, scale: 0.82, filter: 'blur(8px)' }, whileInView: { opacity: 1, scale: 1, filter: 'blur(0px)' }, viewport: { once: true }, transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } };
-const RISE = { initial: { opacity: 0, y: 80, rotateX: 12 }, whileInView: { opacity: 1, y: 0, rotateX: 0 }, viewport: { once: true }, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } };
-const STAGGER_PARENT = { initial: {}, whileInView: {}, viewport: { once: true } };
+const FADE_UP = { initial: { opacity: 0, y: 48 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: "-100px" }, transition: { duration: 0.75, ease: [0.16, 1, 0.3, 1] } };
+const FADE_LEFT = { initial: { opacity: 0, x: -56, filter: 'blur(6px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } };
+const FADE_RIGHT = { initial: { opacity: 0, x: 56, filter: 'blur(6px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } };
+const SCALE_IN = { initial: { opacity: 0, scale: 0.82, filter: 'blur(8px)' }, whileInView: { opacity: 1, scale: 1, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } };
+const RISE = { initial: { opacity: 0, y: 80, rotateX: 12 }, whileInView: { opacity: 1, y: 0, rotateX: 0 }, viewport: { once: true, margin: "-50px" }, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } };
+const STAGGER_PARENT = { initial: { opacity: 0 }, whileInView: { opacity: 1 }, viewport: { once: true, margin: "-100px" }, transition: { staggerChildren: 0.1, delayChildren: 0.2 } };
+
+// Split text animation variant for premium typography reveals
+const splitWordVariant = {
+  initial: { y: "120%", opacity: 0, rotateZ: 5 },
+  whileInView: { y: 0, opacity: 1, rotateZ: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+};
+
+// Helper component for Lusion-style text reveals
+const RevealText = ({ text, style }: { text: string; style?: React.CSSProperties }) => {
+  return (
+    <motion.div variants={STAGGER_PARENT} initial="initial" whileInView="whileInView" viewport={{ once: true, margin: "-100px" }} style={{ display: 'inline-flex', flexWrap: 'wrap', ...style }}>
+      {text.split(' ').map((word, i) => (
+        <span key={i} style={{ overflow: 'hidden', display: 'inline-block', marginRight: '0.25em' }}>
+          <motion.span variants={splitWordVariant} style={{ display: 'inline-block', transformOrigin: 'bottom left' }}>
+            {word}
+          </motion.span>
+        </span>
+      ))}
+    </motion.div>
+  );
+};
 
 const PIPELINE_STEPS = [
   { num: '01', title: 'Ingestion', desc: 'Supabase state management. Topics are queued, deduplicated, and prioritized.', icon: '⚡' },
@@ -50,8 +70,13 @@ export default function Home() {
     return () => window.removeEventListener('scroll', h);
   }, []);
 
-  const heroY = useTransform(scrollYProgress, [0, 0.2], [0, 120]);
+  const heroY = useTransform(scrollYProgress, [0, 0.2], [0, 250]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
+  const glowYLeft = useTransform(scrollYProgress, [0, 1], [0, 400]);
+  const glowYRight = useTransform(scrollYProgress, [0, 1], [0, -200]);
+  
+  // Results section parallax scale down
+  const resultsScale = useTransform(scrollYProgress, [0.3, 0.6], [1, 0.92]);
 
   const handleContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,19 +117,19 @@ export default function Home() {
 
       {/* ─── HERO ─── */}
       <section style={{ position: 'relative', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '28%', left: '20%', width: '480px', height: '480px', backgroundColor: 'rgba(147,51,234,0.18)', borderRadius: '50%', filter: 'blur(120px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '28%', right: '20%', width: '560px', height: '560px', backgroundColor: 'rgba(79,70,229,0.18)', borderRadius: '50%', filter: 'blur(140px)', pointerEvents: 'none' }} />
+        <motion.div style={{ y: glowYLeft, position: 'absolute', top: '15%', left: '10%', width: '500px', height: '500px', backgroundColor: 'rgba(147,51,234,0.18)', borderRadius: '50%', filter: 'blur(120px)', pointerEvents: 'none' }} />
+        <motion.div style={{ y: glowYRight, position: 'absolute', bottom: '15%', right: '10%', width: '600px', height: '600px', backgroundColor: 'rgba(217,70,239,0.15)', borderRadius: '50%', filter: 'blur(140px)', pointerEvents: 'none' }} />
 
         <motion.div style={{ y: heroY, opacity: heroOpacity, textAlign: 'center', zIndex: 10, width: '100%', padding: '0 1.5rem' }}>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.2 }}
             style={{ color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.3em', fontSize: 'clamp(0.7rem,2vw,0.85rem)', fontWeight: 600, marginBottom: '1.5rem' }}>
             Cloud-Native Autonomous Media
           </motion.div>
-          <motion.h1 initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          <motion.h1 initial={{ opacity: 0, scale: 0.92, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             className="display-font" style={{ fontSize: 'clamp(3.5rem,13vw,10rem)', lineHeight: 0.85, color: 'white', letterSpacing: '-0.05em', margin: 0 }}>
             WE BUILD<br /><span className="text-gradient-primary">MACHINES.</span>
           </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.9 }}
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
             style={{ marginTop: '2.5rem', color: 'rgba(255,255,255,0.45)', maxWidth: '34rem', margin: '2.5rem auto 0', fontSize: 'clamp(1rem,2.5vw,1.2rem)', fontWeight: 300, lineHeight: 1.7 }}>
             Not just another content generator. We engineer intelligent, high-retention video systems that operate 24/7 — without local hardware or human intervention.
           </motion.p>
@@ -127,23 +152,30 @@ export default function Home() {
       </div>
 
       {/* ─── ABOUT ─── */}
-      <section id="about" style={{ padding: '9rem 1.5rem', maxWidth: '1400px', margin: '0 auto' }}>
+      <section id="about" style={{ padding: '12rem 1.5rem', maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '3rem', alignItems: 'start' }}>
-          <motion.div {...FADE_LEFT}>
-            <span className="display-font" style={{ fontSize: 'clamp(8rem,20vw,14rem)', lineHeight: 1, color: 'rgba(255,255,255,0.04)', letterSpacing: '-0.05em', marginLeft: '-1rem', display: 'block' }}>01</span>
-          </motion.div>
+          
+          {/* Sticky Left Column for '01' */}
+          <div style={{ position: 'sticky', top: '25vh' }}>
+            <motion.div {...FADE_LEFT}>
+              <span className="display-font text-gradient" style={{ fontSize: 'clamp(8rem,20vw,16rem)', lineHeight: 0.8, letterSpacing: '-0.05em', marginLeft: '-1rem', display: 'block', opacity: 0.2 }}>01</span>
+              <div style={{ width: '100px', height: '4px', background: 'linear-gradient(90deg, #8b5cf6, transparent)', marginTop: '2rem' }} />
+            </motion.div>
+          </div>
+
+          {/* Scrolling Right Column text */}
           <motion.div
             initial={{ opacity: 0, y: 60, filter: 'blur(10px)' }}
             whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            style={{ paddingTop: 'clamp(2rem,10vw,7rem)' }}
+            viewport={{ once: true, margin: "-150px" }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            style={{ paddingTop: '2rem' }}
           >
-            <h2 className="display-font" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', color: 'white', lineHeight: 1.15, marginBottom: '1.75rem' }}>
-              We removed the human bottleneck from production.
-            </h2>
-            <p style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.4)', maxWidth: '40rem', fontWeight: 300, lineHeight: 1.7 }}>
-              The Hazy Factory researches, writes, voices, renders, and distributes content entirely autonomously. It is not a tool. It is a scalable digital studio.
+            <div className="display-font" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', color: 'white', lineHeight: 1.15, marginBottom: '1.75rem' }}>
+              <RevealText text="We removed the human bottleneck from production." />
+            </div>
+            <p style={{ fontSize: '1.3rem', color: 'rgba(255,255,255,0.5)', maxWidth: '40rem', fontWeight: 300, lineHeight: 1.7 }}>
+              The Hazy Factory researches, writes, voices, renders, and distributes content entirely autonomously. It is not a tool. It is a highly scalable, serverless digital studio.
             </p>
           </motion.div>
         </div>
@@ -155,7 +187,9 @@ export default function Home() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <motion.div {...FADE_RIGHT} style={{ marginBottom: '5rem' }}>
             <span style={{ color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '1rem' }}>( System Integrity )</span>
-            <h2 className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white', marginBottom: '1.25rem' }}>Verifiable Precision.</h2>
+            <div className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white', marginBottom: '1.25rem' }}>
+              <RevealText text="Verifiable Precision." />
+            </div>
             <p style={{ color: 'rgba(255,255,255,0.38)', maxWidth: '38rem', fontSize: '1.1rem', lineHeight: 1.7 }}>
               Every claim here is backed by observable system behaviour — not marketing copy. These are measurable properties of the pipeline, not projections.
             </p>
@@ -187,19 +221,25 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, letterSpacing: '0.4em' }}
             whileInView={{ opacity: 1, letterSpacing: '0em' }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
             style={{ textAlign: 'center', marginBottom: '4rem' }}
           >
             <span style={{ color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '1rem' }}>( Output )</span>
             <h2 className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white' }}>The Results.</h2>
           </motion.div>
+          
+          {/* Scroll-linked scale parallax for video container */}
           <motion.div
-            initial={{ opacity: 0, y: 50, rotateX: 8, transformPerspective: 1200 }}
-            whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="glass hover-glow" style={{ borderRadius: '1.5rem', overflow: 'hidden', padding: 'clamp(1rem,3vw,2rem)', aspectRatio: '16/9', maxWidth: '56rem', margin: '0 auto', boxShadow: '0 0 60px rgba(139,92,246,0.12)' }}>
+            style={{ 
+              scale: resultsScale,
+              borderRadius: '1.5rem', overflow: 'hidden', padding: 'clamp(1rem,3vw,2rem)', 
+              aspectRatio: '16/9', maxWidth: '56rem', margin: '0 auto', 
+              boxShadow: '0 0 80px rgba(139,92,246,0.15)',
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              backdropFilter: 'blur(20px)'
+            }}>
             <iframe width="100%" height="100%"
               src={latestVideoId ? `https://www.youtube.com/embed/${latestVideoId}` : "https://www.youtube.com/embed/videoseries?list=UUize2SQoXPI6RFQYbIGemIg"}
               title="Hazy Insight Videos" frameBorder="0"
@@ -225,10 +265,10 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
             {PIPELINE_STEPS.map((step, i) => (
               <motion.div key={i}
-                initial={{ opacity: 0, y: 50, scale: 0.92, filter: 'blur(5px)' }}
+                initial={{ opacity: 0, y: 50, scale: 0.92, filter: 'blur(10px)' }}
                 whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ delay: i * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
                 className="glass group hover-glow"
                 style={{ padding: '2rem 1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--background)', position: 'relative', cursor: 'default' }}>

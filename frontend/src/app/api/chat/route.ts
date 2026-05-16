@@ -97,31 +97,50 @@ export async function POST(req: NextRequest) {
       ? history.slice(-RATE_LIMIT.MAX_HISTORY)
       : [];
 
-    // 6. Call Gemini
+    // 6. Call Gemini with Fallback Models
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: SYSTEM_PROMPT,
-    });
+    const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+    let reply = null;
+    let lastError: any = null;
 
-    const chat = model.startChat({
-      history: trimmedHistory,
-      generationConfig: {
-        maxOutputTokens: 180,   // Tight cap: keeps answers short & saves tokens
-        temperature: 0.65,
-        topP: 0.85,
-      },
-    });
+    for (const modelName of modelsToTry) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: SYSTEM_PROMPT,
+        });
 
-    const result = await chat.sendMessage(trimmedMessage);
-    const reply = result.response.text();
+        const chat = model.startChat({
+          history: trimmedHistory,
+          generationConfig: {
+            maxOutputTokens: 180,
+            temperature: 0.65,
+            topP: 0.85,
+          },
+        });
+
+        const result = await chat.sendMessage(trimmedMessage);
+        reply = result.response.text();
+        
+        // If successful, break out of the fallback loop
+        if (reply) break;
+      } catch (err) {
+        console.warn(`[chat API] Model ${modelName} failed, trying next...`, err);
+        lastError = err;
+      }
+    }
+
+    if (!reply) {
+      throw lastError || new Error("All fallback models failed.");
+    }
 
     return NextResponse.json({ reply, remaining: limit.remaining });
 
-  } catch (err) {
-    console.error('[chat API error]', err);
+  } catch (err: any) {
+    console.error('[chat API fatal error]', err);
+    // Return detailed debug info for the user
     return NextResponse.json({
-      reply: "I'm having trouble connecting right now. Please try again in a moment.",
+      reply: `I'm having trouble connecting right now. Debug Info: ${err.message || 'Unknown error'}`
     }, { status: 200 });
   }
 }

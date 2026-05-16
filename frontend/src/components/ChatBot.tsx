@@ -21,6 +21,7 @@ export default function ChatBot() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCooldown, setIsCooldown] = useState(false);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
@@ -39,12 +40,16 @@ export default function ChatBot() {
 
   const handleSend = async (text?: string) => {
     const trimmed = (text ?? input).trim();
-    if (!trimmed || isLoading || isRateLimited) return;
+    if (!trimmed || isLoading || isCooldown || isRateLimited) return;
     if (trimmed.length > MAX_CHARS) return;
 
     setMessages(prev => [...prev, { role: 'user', text: trimmed }]);
     setInput('');
     setIsLoading(true);
+    setIsCooldown(true);
+    
+    // Release cooldown after 2 seconds to prevent spam
+    setTimeout(() => setIsCooldown(false), 2000);
 
     try {
       // Only send last 6 messages to control token usage
@@ -320,17 +325,17 @@ export default function ChatBot() {
                     <motion.button
                       onClick={() => handleSend()}
                       whileTap={{ scale: 0.9 }}
-                      disabled={isLoading || !input.trim() || isOverLimit}
+                      disabled={isLoading || isCooldown || !input.trim() || isOverLimit}
                       style={{
-                        background: isLoading || !input.trim() || isOverLimit
+                        background: isLoading || isCooldown || !input.trim() || isOverLimit
                           ? 'rgba(139,92,246,0.25)'
                           : 'linear-gradient(135deg, #8b5cf6, #d946ef)',
                         color: 'white', border: 'none', borderRadius: '10px',
                         width: '38px', height: '38px', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: isLoading || !input.trim() || isOverLimit ? 'not-allowed' : 'pointer',
+                        cursor: isLoading || isCooldown || !input.trim() || isOverLimit ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s',
-                        boxShadow: isLoading || !input.trim() ? 'none' : '0 4px 14px rgba(139,92,246,0.35)',
+                        boxShadow: isLoading || isCooldown || !input.trim() ? 'none' : '0 4px 14px rgba(139,92,246,0.35)',
                       }}
                     >
                       <Send size={15} />
