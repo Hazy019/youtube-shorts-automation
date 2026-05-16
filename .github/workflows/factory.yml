@@ -90,7 +90,7 @@ jobs:
             echo "::error::Missing critical secrets: ${MISSING[*]}"
             exit 1
           fi
-          echo "✅ All critical secrets present."
+          echo "All critical secrets present."
 
       # Verify ffmpeg — pre-installed on ubuntu-latest but confirm it's on PATH
       - name: Verify ffmpeg
