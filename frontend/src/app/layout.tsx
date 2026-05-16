@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "High-performance, cloud-native automated production pipeline for short-form media.",
   icons: {
     icon: [
-      { url: '/favicon.png', type: 'image/png' },
+      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
     ],
     shortcut: '/favicon.png',
     apple: '/favicon.png',

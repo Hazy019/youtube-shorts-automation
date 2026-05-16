@@ -52,8 +52,9 @@ export default function ChatBot() {
     setTimeout(() => setIsCooldown(false), 2000);
 
     try {
-      // Only send last 6 messages to control token usage
-      const history = messages.slice(-6).map(m => ({
+      // Skip the initial bot greeting (index 0) — Gemini requires history to start with 'user'
+      // Only send last 6 messages after the greeting to control token usage
+      const history = messages.slice(1).slice(-6).map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.text }]
       }));

@@ -4,12 +4,12 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
 import ChatBot from '@/components/ChatBot';
 
-const FADE_UP = { initial: { opacity: 0, y: 48 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: "-100px" }, transition: { duration: 0.75, ease: [0.16, 1, 0.3, 1] } };
-const FADE_LEFT = { initial: { opacity: 0, x: -56, filter: 'blur(6px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } };
-const FADE_RIGHT = { initial: { opacity: 0, x: 56, filter: 'blur(6px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } };
-const SCALE_IN = { initial: { opacity: 0, scale: 0.82, filter: 'blur(8px)' }, whileInView: { opacity: 1, scale: 1, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } };
-const RISE = { initial: { opacity: 0, y: 80, rotateX: 12 }, whileInView: { opacity: 1, y: 0, rotateX: 0 }, viewport: { once: true, margin: "-50px" }, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } };
-const STAGGER_PARENT = { initial: { opacity: 0 }, whileInView: { opacity: 1 }, viewport: { once: true, margin: "-100px" }, transition: { staggerChildren: 0.1, delayChildren: 0.2 } };
+const ANIM_BLUR_UP = { initial: { opacity: 0, y: 50, filter: 'blur(10px)' }, whileInView: { opacity: 1, y: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 1.1, ease: [0.16, 1, 0.3, 1] } };
+const ANIM_SLIDE_LEFT = { initial: { opacity: 0, x: -60, filter: 'blur(12px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } };
+const ANIM_SLIDE_RIGHT = { initial: { opacity: 0, x: 60, filter: 'blur(12px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } };
+const ANIM_SCALE_IN = { initial: { opacity: 0, scale: 0.9, filter: 'blur(10px)' }, whileInView: { opacity: 1, scale: 1, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } };
+const ANIM_RISE = { initial: { opacity: 0, y: 100, rotateX: 15, filter: 'blur(8px)' }, whileInView: { opacity: 1, y: 0, rotateX: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-50px" }, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } };
+const STAGGER_PARENT = { initial: { opacity: 0 }, whileInView: { opacity: 1 }, viewport: { once: true, margin: "-100px" }, transition: { staggerChildren: 0.12, delayChildren: 0.2 } };
 
 // Split text animation variant for premium typography reveals
 const splitWordVariant = {
@@ -105,26 +105,56 @@ export default function Home() {
         className="pill-nav"
         style={{
           position: 'fixed', top: '1.5rem', left: '50%', zIndex: 50,
-          padding: '0.75rem 1.5rem', width: '92%', maxWidth: '960px',
+          padding: '0.65rem 1.25rem', width: '92%', maxWidth: '980px',
           opacity: isScrolled ? 0.88 : 1, transition: 'opacity 0.3s ease',
         }}
       >
-        <div className="display-font" style={{ color: 'white', fontSize: '1.15rem', letterSpacing: '-0.02em', fontWeight: 900 }}>HAZY.</div>
+        {/* Logo */}
+        <div className="display-font" style={{ color: 'var(--foreground)', fontSize: '1.1rem', letterSpacing: '-0.02em', fontWeight: 900, flexShrink: 0 }}>HAZY.</div>
+
+        {/* Center links */}
         <div className="nav-links hide-mobile">
           <a href="#about" className="nav-link">Philosophy</a>
           <a href="#integrity" className="nav-link">Integrity</a>
           <a href="#work" className="nav-link">Output</a>
           <a href="#machine" className="nav-link">Pipeline</a>
+          <a href="/docs" className="nav-link">Docs</a>
           <a href="#contact" className="nav-link">Contact</a>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem' }}>
-          <a href="https://github.com/Hazy019/youtube-shorts-automator" target="_blank" rel="noopener noreferrer" className="nav-link hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--card-border)', padding: '0.35rem 0.75rem', borderRadius: '999px', fontSize: '0.8rem', color: 'var(--foreground)' }}>
-            <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
-            Star <span style={{ opacity: 0.6, borderLeft: '1px solid var(--card-border)', paddingLeft: '0.4rem', marginLeft: '0.1rem' }}>1.7k</span>
+
+        {/* Right actions */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.6rem' }}>
+          {/* GitHub Star */}
+          <a
+            href="https://github.com/Hazy019/youtube-shorts-automator"
+            target="_blank" rel="noopener noreferrer"
+            className="nav-star hide-mobile"
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" style={{ flexShrink: 0 }}>
+              <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" />
+            </svg>
+            Star
+            <span className="nav-star-count">1.7k</span>
           </a>
-          <button onClick={toggleTheme} style={{ background: 'none', border: 'none', color: 'var(--foreground)', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center' }} aria-label="Toggle Theme">
-            {theme === 'dark' ? '☀️' : '🌙'}
+
+          {/* Theme toggle */}
+          <button onClick={toggleTheme} className="theme-toggle" aria-label="Toggle Theme">
+            {theme === 'dark' ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            )}
           </button>
+
+          {/* CTA */}
           <a href="#contact" className="nav-cta">Scale Together</a>
         </div>
       </motion.nav>
@@ -134,13 +164,22 @@ export default function Home() {
         <motion.div style={{ y: glowYLeft, position: 'absolute', top: '15%', left: '10%', width: '500px', height: '500px', backgroundColor: 'rgba(147,51,234,0.18)', borderRadius: '50%', filter: 'blur(120px)', pointerEvents: 'none' }} />
         <motion.div style={{ y: glowYRight, position: 'absolute', bottom: '15%', right: '10%', width: '600px', height: '600px', backgroundColor: 'rgba(217,70,239,0.15)', borderRadius: '50%', filter: 'blur(140px)', pointerEvents: 'none' }} />
 
-        <motion.div style={{ y: heroY, opacity: heroOpacity, textAlign: 'center', zIndex: 10, width: '100%', padding: '0 1.5rem' }}>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.2 }}
-            style={{ color: 'rgba(var(--foreground-rgb),0.35)', textTransform: 'uppercase', letterSpacing: '0.3em', fontSize: 'clamp(0.7rem,2vw,0.85rem)', fontWeight: 600, marginBottom: '1.5rem' }}>
+        <motion.div style={{ y: heroY, opacity: heroOpacity, textAlign: 'center', zIndex: 10, width: '100%', padding: '0 clamp(1rem, 4vw, 2rem)' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20, letterSpacing: '0.6em' }}
+            animate={{ opacity: 1, y: 0, letterSpacing: '0.3em' }}
+            transition={{ duration: 1.1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{ color: 'var(--foreground-muted)', textTransform: 'uppercase', letterSpacing: '0.3em', fontSize: 'clamp(0.65rem, 1.8vw, 0.85rem)', fontWeight: 600, marginBottom: '1.5rem' }}
+          >
             Cloud-Native Autonomous Media
           </motion.div>
-          <motion.h1 initial={{ opacity: 0, scale: 0.92, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            className="display-font" style={{ fontSize: 'clamp(2.5rem,11vw,10rem)', lineHeight: 0.85, color: 'var(--foreground)', letterSpacing: '-0.05em', margin: 0, wordBreak: 'break-word', hyphens: 'auto' }}>
+          <motion.h1
+            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 1.3, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="display-font hero-title"
+            style={{ fontSize: 'clamp(3rem, 13vw, 10rem)', lineHeight: 0.88, color: 'var(--foreground)', letterSpacing: '-0.05em', margin: 0 }}
+          >
             WE BUILD<br /><span className="text-gradient-primary">MACHINES.</span>
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
@@ -171,7 +210,7 @@ export default function Home() {
           
           {/* Sticky Left Column for '01' */}
           <div style={{ position: 'sticky', top: '25vh' }}>
-            <motion.div {...FADE_LEFT}>
+            <motion.div {...ANIM_SLIDE_LEFT}>
               <span className="display-font text-gradient" style={{ fontSize: 'clamp(8rem,20vw,16rem)', lineHeight: 0.8, letterSpacing: '-0.05em', marginLeft: '-1rem', display: 'block', opacity: 0.2 }}>01</span>
               <div style={{ width: '100px', height: '4px', background: 'linear-gradient(90deg, #8b5cf6, transparent)', marginTop: '2rem' }} />
             </motion.div>
@@ -199,7 +238,7 @@ export default function Home() {
       <section id="integrity" style={{ padding: '9rem 1.5rem', backgroundColor: '#050505', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '50%', right: '-10%', width: '500px', height: '500px', background: 'rgba(139,92,246,0.07)', borderRadius: '50%', filter: 'blur(100px)' }} />
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <motion.div {...FADE_RIGHT} style={{ marginBottom: '5rem' }}>
+          <motion.div {...ANIM_SLIDE_RIGHT} style={{ marginBottom: '5rem' }}>
             <span style={{ color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '1rem' }}>( System Integrity )</span>
             <div className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white', marginBottom: '1.25rem' }}>
               <RevealText text="Verifiable Precision." />
@@ -209,13 +248,11 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.75rem' }}>
+          <div className="pipeline-grid">
             {INTEGRITY_CARDS.map((card, i) => (
               <motion.div key={i}
-                initial={{ opacity: 0, y: 40, scale: 0.94, filter: 'blur(6px)' }}
-                whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                {...ANIM_SCALE_IN}
+                transition={{ ...ANIM_SCALE_IN.transition, delay: i * 0.1 }}
                 className="glass hover-glow group" style={{ padding: '2.5rem 2rem', borderRadius: '1.25rem' }}>
                 <div className="display-font text-gradient-primary" style={{ fontSize: '3.5rem', lineHeight: 1, marginBottom: '0.75rem' }}>{card.stat}</div>
                 <h3 style={{ fontSize: '1.15rem', color: 'white', marginBottom: '0.5rem', fontWeight: 600 }}>{card.label}</h3>
@@ -268,10 +305,10 @@ export default function Home() {
         <div style={{ position: 'absolute', bottom: '20%', left: '-5%', width: '400px', height: '400px', background: 'rgba(139,92,246,0.08)', borderRadius: '50%', filter: 'blur(90px)' }} />
         <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '5rem', gap: '2rem' }}>
-            <motion.h2 {...FADE_LEFT} transition={{ duration: 0.8 }} className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white', margin: 0 }}>
+            <motion.h2 {...ANIM_SLIDE_LEFT} className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white', margin: 0 }}>
               The <br /><span className="text-gradient">Pipeline</span>
             </motion.h2>
-            <motion.p {...FADE_RIGHT} transition={{ duration: 0.8, delay: 0.1 }} style={{ color: 'rgba(255,255,255,0.38)', maxWidth: '22rem', fontSize: '1.1rem', margin: 0 }}>
+            <motion.p {...ANIM_SLIDE_RIGHT} transition={{ ...ANIM_SLIDE_RIGHT.transition, delay: 0.1 }} style={{ color: 'rgba(255,255,255,0.38)', maxWidth: '22rem', fontSize: '1.1rem', margin: 0 }}>
               Six discrete stages. Zero human touch. Triggered by GitHub Actions on a schedule or push.
             </motion.p>
           </div>
@@ -279,11 +316,9 @@ export default function Home() {
           <div className="pipeline-grid">
             {PIPELINE_STEPS.map((step, i) => (
               <motion.div key={i}
-                initial={{ opacity: 0, y: 50, scale: 0.92, filter: 'blur(10px)' }}
-                whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ delay: i * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                {...ANIM_RISE}
+                transition={{ ...ANIM_RISE.transition, delay: i * 0.1 }}
+                whileHover={{ y: -6, transition: { duration: 0.3 } }}
                 className="glass group hover-glow"
                 style={{ padding: '2rem 1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--background)', position: 'relative', cursor: 'default' }}>
                 <div style={{ fontSize: '1.75rem', lineHeight: 1 }}>{step.icon}</div>
@@ -305,10 +340,8 @@ export default function Home() {
             { value: '0', accent: '.', suffix: '0', label: 'Local Hardware Required', color: 'var(--secondary)' },
           ].map((m, i) => (
             <motion.div key={i}
-              initial={{ opacity: 0, y: 60, rotateX: 15 }}
-              whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.22, duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+              {...ANIM_RISE}
+              transition={{ ...ANIM_RISE.transition, delay: i * 0.2 }}
               style={{ transformPerspective: 800 }}
             >
               <div className="display-font" style={{ fontSize: 'clamp(4rem,10vw,7.5rem)', color: 'white', letterSpacing: '-0.05em' }}>
@@ -323,7 +356,7 @@ export default function Home() {
       {/* ─── CONTACT ─── */}
       <section id="contact" style={{ padding: '9rem 1.5rem', backgroundColor: '#050505', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
-          <motion.div {...FADE_UP} transition={{ duration: 0.85 }}>
+          <motion.div {...ANIM_BLUR_UP}>
             <h2 className="display-font" style={{ fontSize: 'clamp(3rem,8vw,5rem)', color: 'white', marginBottom: '1.25rem', lineHeight: 1 }}>
               Scale Your <br /><span className="text-gradient-primary">Vision.</span>
             </h2>
@@ -363,7 +396,10 @@ export default function Home() {
       {/* ─── FOOTER ─── */}
       <footer style={{ padding: '2.5rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.28)', fontSize: '0.85rem' }}>
         <div className="display-font" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.45)' }}>HAZY.</div>
-        <p style={{ margin: 0 }}>© 2026 Designed for scale. Built for performance.</p>
+        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+          <a href="/docs" className="nav-link" style={{ fontSize: '0.8rem' }}>Documentation</a>
+          <p style={{ margin: 0 }}>© 2026 Designed for scale. Built for performance.</p>
+        </div>
       </footer>
 
       <ChatBot />
