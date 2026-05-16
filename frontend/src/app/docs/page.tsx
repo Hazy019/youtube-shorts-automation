@@ -34,17 +34,26 @@ const NAV_SECTIONS = [
 export default function DocsPage() {
   const [activeId, setActiveId] = useState('introduction');
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const isClickingRef = useRef(false);
 
   // IntersectionObserver for active TOC link
   useEffect(() => {
+    // Read theme from localStorage to stay in sync with the dashboard
+    const savedTheme = localStorage.getItem('hazy-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
     const allIds = NAV_SECTIONS.flatMap(s => s.items.map(i => i.id));
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) setActiveId(entry.target.id);
-        });
+        if (isClickingRef.current) return;
+        
+        // Find the first intersecting entry instead of relying on the last one processed
+        const intersecting = entries.find(e => e.isIntersecting);
+        if (intersecting) {
+           setActiveId(intersecting.target.id);
+        }
       },
-      { rootMargin: '-20% 0px -60% 0px' }
+      { rootMargin: '-10% 0px -75% 0px' }
     );
     allIds.forEach(id => {
       const el = document.getElementById(id);
@@ -54,7 +63,14 @@ export default function DocsPage() {
   }, []);
 
   const scrollTo = (id: string) => {
+    isClickingRef.current = true;
+    setActiveId(id);
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // Resume observer after smooth scroll completes
+    setTimeout(() => {
+      isClickingRef.current = false;
+    }, 800);
   };
 
   return (
