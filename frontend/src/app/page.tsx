@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
 import ChatBot from '@/components/ChatBot';
 
@@ -105,11 +105,13 @@ export default function Home() {
   // Results section parallax scale down
   const resultsScale = useTransform(scrollYProgress, [0.3, 0.6], [1, 0.92]);
 
-  const handleContact = async (e: React.FormEvent) => {
+  const handleContact = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-    setContactState('loading');
-    await new Promise(r => setTimeout(r, 1800));
+    // Open mailto with the user's email pre-filled
+    const subject = encodeURIComponent('Collaboration Inquiry — Hazy Content Factory');
+    const body = encodeURIComponent(`Hi,\n\nI'm interested in learning more about the Hazy Content Factory and potential collaboration.\n\nReach me at: ${email}\n\nLooking forward to hearing from you.`);
+    window.open(`mailto:hazyinsight@gmail.com?subject=${subject}&body=${body}`, '_blank');
     setContactState('done');
   };
 
@@ -159,19 +161,37 @@ export default function Home() {
 
           {/* Theme toggle */}
           <button onClick={toggleTheme} className="theme-toggle" aria-label="Toggle Theme">
-            {theme === 'dark' ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5"/>
-                <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-              </svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-              </svg>
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {theme === 'dark' ? (
+                <motion.span key="sun"
+                  initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                  exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                </motion.span>
+              ) : (
+                <motion.span key="moon"
+                  initial={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                  exit={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                </motion.span>
+              )}
+            </AnimatePresence>
           </button>
 
           {/* CTA */}
@@ -328,7 +348,7 @@ export default function Home() {
             <motion.h2 {...ANIM_SLIDE_LEFT} className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'var(--foreground)', margin: 0 }}>
               The <br /><span className="text-gradient">Pipeline</span>
             </motion.h2>
-            <motion.p {...ANIM_SLIDE_RIGHT} transition={{ ...ANIM_SLIDE_RIGHT.transition, delay: 0.1 }} style={{ color: 'rgba(255,255,255,0.38)', maxWidth: '22rem', fontSize: '1.1rem', margin: 0 }}>
+            <motion.p {...ANIM_SLIDE_RIGHT} transition={{ ...ANIM_SLIDE_RIGHT.transition, delay: 0.1 }} style={{ color: 'var(--foreground-muted)', maxWidth: '22rem', fontSize: '1.1rem', margin: 0 }}>
               Six discrete stages. Zero human touch. Triggered by GitHub Actions on a schedule or push.
             </motion.p>
           </div>
@@ -381,7 +401,7 @@ export default function Home() {
               Scale Your <br /><span className="text-gradient-primary">Vision.</span>
             </h2>
             <p style={{ color: 'var(--foreground-muted)', fontSize: '1.15rem', maxWidth: '30rem', margin: '0 auto 3rem', lineHeight: 1.7 }}>
-              Stop managing creators. Start managing infrastructure. Drop your email and let's talk about what the factory can build for you.
+              Stop managing creators. Start managing infrastructure. Enter your email and click the button — it will open your mail client with a pre-filled message sent directly to us.
             </p>
 
             {contactState === 'done' ? (
@@ -397,15 +417,19 @@ export default function Home() {
                   placeholder="your@email.com"
                   style={{ flex: '1 1 220px', maxWidth: '320px', padding: '0.875rem 1.25rem', borderRadius: '999px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '1rem', outline: 'none', transition: 'all 0.2s ease' }}
                 />
-                <motion.button type="submit" 
-                  whileHover={{ scale: 1.05, boxShadow: '0 8px 30px rgba(255,255,255,0.3)' }} 
+                <motion.button type="submit"
+                  whileHover={{ scale: 1.05, boxShadow: '0 8px 32px rgba(139,92,246,0.45)' }}
                   whileTap={{ scale: 0.95 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                  disabled={contactState === 'loading'}
-                  style={{ padding: '0.875rem 2.25rem', borderRadius: '999px', background: contactState === 'loading' ? 'rgba(255,255,255,0.4)' : 'white', color: 'black', fontWeight: 800, fontSize: '0.95rem', border: 'none', cursor: contactState === 'loading' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  {contactState === 'loading' ? (
-                    <><motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} style={{ display: 'inline-block' }}>⟳</motion.span> Sending…</>
-                  ) : 'Initialize Contact'}
+                  style={{
+                    padding: '0.875rem 2.25rem', borderRadius: '999px',
+                    background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                    color: 'white', fontWeight: 800, fontSize: '0.95rem',
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
+                  }}>
+                  Initialize Contact ↗
                 </motion.button>
               </form>
             )}

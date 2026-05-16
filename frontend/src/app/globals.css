@@ -42,8 +42,11 @@ body {
   font-family: var(--font-inter), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.4s ease, color 0.4s ease;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
+
+/* ── Favicon border-radius (modern Chrome/Edge renders this) ── */
+link[rel~="icon"] { border-radius: 50%; }
 
 h1, h2, h3, h4, h5, h6, .display-font {
   font-family: var(--font-syne), sans-serif;
