@@ -54,6 +54,13 @@ export default function Home() {
   const [contactState, setContactState] = useState<'idle' | 'loading' | 'done'>('idle');
   const [email, setEmail] = useState('');
   const [latestVideoId, setLatestVideoId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   useEffect(() => {
     const h = () => setIsScrolled(window.scrollY > 50);
@@ -110,7 +117,14 @@ export default function Home() {
           <a href="#machine" className="nav-link">Pipeline</a>
           <a href="#contact" className="nav-link">Contact</a>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem' }}>
+          <a href="https://github.com/Hazy019/youtube-shorts-automator" target="_blank" rel="noopener noreferrer" className="nav-link hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--card-border)', padding: '0.35rem 0.75rem', borderRadius: '999px', fontSize: '0.8rem', color: 'var(--foreground)' }}>
+            <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
+            Star <span style={{ opacity: 0.6, borderLeft: '1px solid var(--card-border)', paddingLeft: '0.4rem', marginLeft: '0.1rem' }}>1.7k</span>
+          </a>
+          <button onClick={toggleTheme} style={{ background: 'none', border: 'none', color: 'var(--foreground)', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center' }} aria-label="Toggle Theme">
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
           <a href="#contact" className="nav-cta">Scale Together</a>
         </div>
       </motion.nav>
@@ -122,11 +136,11 @@ export default function Home() {
 
         <motion.div style={{ y: heroY, opacity: heroOpacity, textAlign: 'center', zIndex: 10, width: '100%', padding: '0 1.5rem' }}>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.2 }}
-            style={{ color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.3em', fontSize: 'clamp(0.7rem,2vw,0.85rem)', fontWeight: 600, marginBottom: '1.5rem' }}>
+            style={{ color: 'rgba(var(--foreground-rgb),0.35)', textTransform: 'uppercase', letterSpacing: '0.3em', fontSize: 'clamp(0.7rem,2vw,0.85rem)', fontWeight: 600, marginBottom: '1.5rem' }}>
             Cloud-Native Autonomous Media
           </motion.div>
           <motion.h1 initial={{ opacity: 0, scale: 0.92, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            className="display-font" style={{ fontSize: 'clamp(3.5rem,13vw,10rem)', lineHeight: 0.85, color: 'white', letterSpacing: '-0.05em', margin: 0 }}>
+            className="display-font" style={{ fontSize: 'clamp(2.5rem,11vw,10rem)', lineHeight: 0.85, color: 'var(--foreground)', letterSpacing: '-0.05em', margin: 0, wordBreak: 'break-word', hyphens: 'auto' }}>
             WE BUILD<br /><span className="text-gradient-primary">MACHINES.</span>
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
@@ -262,7 +276,7 @@ export default function Home() {
             </motion.p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+          <div className="pipeline-grid">
             {PIPELINE_STEPS.map((step, i) => (
               <motion.div key={i}
                 initial={{ opacity: 0, y: 50, scale: 0.92, filter: 'blur(10px)' }}

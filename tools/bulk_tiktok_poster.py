@@ -125,64 +125,87 @@ def drain_tiktok_queue():
             continue
             
         # 2. Upload
-        try:
-            import threading
-            from tiktok_uploader.upload import upload_video
-            
-            cookies_path = _prepare_cookies()
-            if not cookies_path or not _validate_netscape(cookies_path):
-                print("FATAL: Invalid or missing TikTok Cookies. Stop to fix cookies.")
-                break
+        while True:
+            try:
+                import threading
+                from tiktok_uploader.upload import upload_video
                 
-            # Local manual mode: Headless is False so user can solve captchas
-            is_headless = False
-            print(f"Launching LOCAL browser via threaded-sync mode...")
-            
-            thread_result = None
-            thread_err = None
-
-            def _run_sync_upload():
-                nonlocal thread_result, thread_err
-                try:
-                    thread_result = upload_video(
-                        local_filename,
-                        description=desc,
-                        cookies=cookies_path,
-                        headless=is_headless,
-                    )
-                except Exception as e:
-                    thread_err = e
-
-            # We must run this in a thread because Supabase/Httpx might have 
-            # already started an asyncio loop, which crashes Playwright Sync API
-            upload_thread = threading.Thread(target=_run_sync_upload)
-            upload_thread.start()
-            upload_thread.join()
-
-            if thread_err: raise thread_err
-            result = thread_result
-            
-            if isinstance(result, list) and len(result) > 0:
-                print(f"[RETRY ERROR] {result[0]}")
-            else:
-                # 3. Mark Success
-                print(f"SUCCESS! Uploaded {topic}")
-                db.table("videos").update({"tiktok_status": "SUCCESS"}).eq("id", video_id).execute()
-                total_uploaded += 1
-                ping_tiktok_success(topic)
+                cookies_path = _prepare_cookies()
+                if not cookies_path or not _validate_netscape(cookies_path):
+                    print("FATAL: Invalid or missing TikTok Cookies. Stop to fix cookies.")
+                    break
+                    
+                # Local manual mode: Headless is False so user can solve captchas
+                is_headless = False
+                print(f"Launching LOCAL browser via threaded-sync mode...")
                 
-                # S3 PURGE: Delete from AWS now that it's on TikTok
-                delete_s3_video(s3_url)
+                thread_result = None
+                thread_err = None
+
+                def _run_sync_upload():
+                    nonlocal thread_result, thread_err
+                    try:
+                        thread_result = upload_video(
+                            local_filename,
+                            description=desc,
+                            cookies=cookies_path,
+                            headless=is_headless,
+                        )
+                    except Exception as e:
+                        thread_err = e
+
+                # We must run this in a thread because Supabase/Httpx might have 
+                # already started an asyncio loop, which crashes Playwright Sync API
+                upload_thread = threading.Thread(target=_run_sync_upload)
+                upload_thread.start()
+                upload_thread.join()
+
+                if thread_err: raise thread_err
+                result = thread_result
                 
-        except Exception as e:
-            print(f"Upload flow crashed for {topic}: {e}")
-            traceback.print_exc()
-            continue # Don't stop the whole queue if one fails
+                if isinstance(result, list) and len(result) > 0:
+                    print(f"[RETRY ERROR] {result[0]}")
+                    raise Exception(f"Upload returned error: {result[0]}")
+                else:
+                    # 3. Mark Success
+                    print(f"SUCCESS! Uploaded {topic}")
+                    db.table("videos").update({"tiktok_status": "SUCCESS"}).eq("id", video_id).execute()
+                    total_uploaded += 1
+                    ping_tiktok_success(topic)
+                    
+                    # S3 PURGE: Delete from AWS now that it's on TikTok
+                    delete_s3_video(s3_url)
+                    break # Exit retry loop on success
+                    
+            except Exception as e:
+                print(f"Upload flow crashed for {topic}: {e}")
+                traceback.print_exc()
+                
+                # INTERACTIVE RECOVERY
+                print("\n" + "="*50)
+                print("⚠ UPLOAD FAILED OR BLOCKED BY UI ⚠")
+                print("Possible reasons: 'react-joyride' popup, captcha, or network issue.")
+                print("="*50)
+                import time
+                ans = input("Do you want to [R]etry, [S]kip this video, or [A]bort queue? (r/s/a): ").strip().lower()
+                
+                if ans == 'r':
+                    print("Retrying upload for the same video...")
+                    time.sleep(2)
+                    continue
+                elif ans == 'a':
+                    print("Aborting queue processing.")
+                    if os.path.exists(local_filename):
+                        try: os.remove(local_filename)
+                        except: pass
+                    return # Exit the whole function
+                else:
+                    print("Skipping this video.")
+                    break # Exit retry loop, move to next video in queue
             
-        finally:
-            if os.path.exists(local_filename):
-                try: os.remove(local_filename)
-                except: pass
+        if os.path.exists(local_filename):
+            try: os.remove(local_filename)
+            except: pass
                 
     if total_uploaded > 0:
         ping_queue_completed(total_uploaded)

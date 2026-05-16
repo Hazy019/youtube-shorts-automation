@@ -1,6 +1,7 @@
 :root {
   --background: #050505;
   --foreground: #f0f0f2;
+  --foreground-rgb: 255, 255, 255;
   --primary: #8b5cf6;
   --secondary: #d946ef;
   --accent: #10b981;
@@ -8,6 +9,18 @@
   --card-border: rgba(255, 255, 255, 0.05);
   --muted: #a1a1aa;
 }
+
+[data-theme="light"] {
+  --background: #fafafa;
+  --foreground: #050505;
+  --foreground-rgb: 0, 0, 0;
+  --primary: #7c3aed;
+  --secondary: #c026d3;
+  --card-bg: rgba(0, 0, 0, 0.03);
+  --card-border: rgba(0, 0, 0, 0.1);
+  --muted: #52525b;
+}
+
 
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; padding: 0; margin: 0; }
@@ -166,4 +179,23 @@ a { color: inherit; text-decoration: none; }
   }
   .nav-links { display: none !important; }
   .hide-mobile { display: none !important; }
+}
+
+/* ── Pipeline Grid ── */
+.pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .pipeline-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .pipeline-grid {
+    grid-template-columns: 1fr;
+  }
 }
