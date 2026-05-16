@@ -42,5 +42,4 @@ temp_render_*.mp4
 # Local Sandbox / Tests
 tests/
 test_*.py
-verify_apis.py
 test_hook.py
