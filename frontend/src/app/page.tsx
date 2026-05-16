@@ -4,10 +4,13 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
 import ChatBot from '@/components/ChatBot';
 
-const FADE_UP = { initial: { opacity: 0, y: 40 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true } };
-const FADE_LEFT = { initial: { opacity: 0, x: -40 }, whileInView: { opacity: 1, x: 0 }, viewport: { once: true } };
-const FADE_RIGHT = { initial: { opacity: 0, x: 40 }, whileInView: { opacity: 1, x: 0 }, viewport: { once: true } };
-const SCALE_IN = { initial: { opacity: 0, scale: 0.88 }, whileInView: { opacity: 1, scale: 1 }, viewport: { once: true } };
+// Distinct animation presets — each section gets a unique entrance
+const FADE_UP = { initial: { opacity: 0, y: 48 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.75, ease: [0.16, 1, 0.3, 1] } };
+const FADE_LEFT = { initial: { opacity: 0, x: -56, filter: 'blur(6px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true }, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } };
+const FADE_RIGHT = { initial: { opacity: 0, x: 56, filter: 'blur(6px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true }, transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] } };
+const SCALE_IN = { initial: { opacity: 0, scale: 0.82, filter: 'blur(8px)' }, whileInView: { opacity: 1, scale: 1, filter: 'blur(0px)' }, viewport: { once: true }, transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } };
+const RISE = { initial: { opacity: 0, y: 80, rotateX: 12 }, whileInView: { opacity: 1, y: 0, rotateX: 0 }, viewport: { once: true }, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } };
+const STAGGER_PARENT = { initial: {}, whileInView: {}, viewport: { once: true } };
 
 const PIPELINE_STEPS = [
   { num: '01', title: 'Ingestion', desc: 'Supabase state management. Topics are queued, deduplicated, and prioritized.', icon: '⚡' },
@@ -30,10 +33,20 @@ export default function Home() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [contactState, setContactState] = useState<'idle' | 'loading' | 'done'>('idle');
   const [email, setEmail] = useState('');
+  const [latestVideoId, setLatestVideoId] = useState<string | null>(null);
 
   useEffect(() => {
     const h = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', h);
+    
+    // Fetch the latest video from our dynamic API route
+    fetch('/api/latest-video')
+      .then(res => res.json())
+      .then(data => {
+        if (data.videoId) setLatestVideoId(data.videoId);
+      })
+      .catch(err => console.error('Failed to load latest video:', err));
+
     return () => window.removeEventListener('scroll', h);
   }, []);
 
@@ -60,20 +73,20 @@ export default function Home() {
         className="pill-nav"
         style={{
           position: 'fixed', top: '1.5rem', left: '50%', zIndex: 50,
-          padding: '0.875rem 1.75rem', width: '92%', maxWidth: '920px',
-          opacity: isScrolled ? 0.92 : 1, transition: 'opacity 0.3s ease',
+          padding: '0.75rem 1.5rem', width: '92%', maxWidth: '960px',
+          opacity: isScrolled ? 0.88 : 1, transition: 'opacity 0.3s ease',
         }}
       >
-        <div className="display-font" style={{ color: 'white', fontSize: '1.2rem', letterSpacing: '-0.02em' }}>HAZY.</div>
+        <div className="display-font" style={{ color: 'white', fontSize: '1.15rem', letterSpacing: '-0.02em', fontWeight: 900 }}>HAZY.</div>
         <div className="nav-links hide-mobile">
-          <a href="#about">Philosophy</a>
-          <a href="#integrity">Integrity</a>
-          <a href="#machine">Pipeline</a>
+          <a href="#about" className="nav-link">Philosophy</a>
+          <a href="#integrity" className="nav-link">Integrity</a>
+          <a href="#work" className="nav-link">Output</a>
+          <a href="#machine" className="nav-link">Pipeline</a>
+          <a href="#contact" className="nav-link">Contact</a>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <a href="#contact" className="nav-cta">
-            Scale Together
-          </a>
+          <a href="#contact" className="nav-cta">Scale Together</a>
         </div>
       </motion.nav>
 
@@ -116,10 +129,16 @@ export default function Home() {
       {/* ─── ABOUT ─── */}
       <section id="about" style={{ padding: '9rem 1.5rem', maxWidth: '1400px', margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '3rem', alignItems: 'start' }}>
-          <motion.div {...FADE_LEFT} transition={{ duration: 0.9 }}>
+          <motion.div {...FADE_LEFT}>
             <span className="display-font" style={{ fontSize: 'clamp(8rem,20vw,14rem)', lineHeight: 1, color: 'rgba(255,255,255,0.04)', letterSpacing: '-0.05em', marginLeft: '-1rem', display: 'block' }}>01</span>
           </motion.div>
-          <motion.div {...FADE_UP} transition={{ delay: 0.25, duration: 0.85 }} style={{ paddingTop: 'clamp(2rem,10vw,7rem)' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 60, filter: 'blur(10px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            style={{ paddingTop: 'clamp(2rem,10vw,7rem)' }}
+          >
             <h2 className="display-font" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', color: 'white', lineHeight: 1.15, marginBottom: '1.75rem' }}>
               We removed the human bottleneck from production.
             </h2>
@@ -134,7 +153,7 @@ export default function Home() {
       <section id="integrity" style={{ padding: '9rem 1.5rem', backgroundColor: '#050505', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '50%', right: '-10%', width: '500px', height: '500px', background: 'rgba(139,92,246,0.07)', borderRadius: '50%', filter: 'blur(100px)' }} />
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <motion.div {...FADE_RIGHT} transition={{ duration: 0.85 }} style={{ marginBottom: '5rem' }}>
+          <motion.div {...FADE_RIGHT} style={{ marginBottom: '5rem' }}>
             <span style={{ color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '1rem' }}>( System Integrity )</span>
             <h2 className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white', marginBottom: '1.25rem' }}>Verifiable Precision.</h2>
             <p style={{ color: 'rgba(255,255,255,0.38)', maxWidth: '38rem', fontSize: '1.1rem', lineHeight: 1.7 }}>
@@ -144,7 +163,11 @@ export default function Home() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.75rem' }}>
             {INTEGRITY_CARDS.map((card, i) => (
-              <motion.div key={i} {...SCALE_IN} transition={{ delay: i * 0.12, duration: 0.75 }}
+              <motion.div key={i}
+                initial={{ opacity: 0, y: 40, scale: 0.94, filter: 'blur(6px)' }}
+                whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 className="glass hover-glow group" style={{ padding: '2.5rem 2rem', borderRadius: '1.25rem' }}>
                 <div className="display-font text-gradient-primary" style={{ fontSize: '3.5rem', lineHeight: 1, marginBottom: '0.75rem' }}>{card.stat}</div>
                 <h3 style={{ fontSize: '1.15rem', color: 'white', marginBottom: '0.5rem', fontWeight: 600 }}>{card.label}</h3>
@@ -161,14 +184,24 @@ export default function Home() {
       {/* ─── RESULTS ─── */}
       <section id="work" style={{ padding: '9rem 0', position: 'relative' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1.5rem' }}>
-          <motion.div {...FADE_UP} transition={{ duration: 0.8 }} style={{ textAlign: 'center', marginBottom: '4rem' }}>
+          <motion.div
+            initial={{ opacity: 0, letterSpacing: '0.4em' }}
+            whileInView={{ opacity: 1, letterSpacing: '0em' }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            style={{ textAlign: 'center', marginBottom: '4rem' }}
+          >
             <span style={{ color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '1rem' }}>( Output )</span>
             <h2 className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'white' }}>The Results.</h2>
           </motion.div>
-          <motion.div {...SCALE_IN} transition={{ duration: 0.9, delay: 0.1 }}
+          <motion.div
+            initial={{ opacity: 0, y: 50, rotateX: 8, transformPerspective: 1200 }}
+            whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
             className="glass hover-glow" style={{ borderRadius: '1.5rem', overflow: 'hidden', padding: 'clamp(1rem,3vw,2rem)', aspectRatio: '16/9', maxWidth: '56rem', margin: '0 auto', boxShadow: '0 0 60px rgba(139,92,246,0.12)' }}>
             <iframe width="100%" height="100%"
-              src="https://www.youtube.com/embed/videoseries?list=UUize2SQoXPI6RFQYbIGemIg"
+              src={latestVideoId ? `https://www.youtube.com/embed/${latestVideoId}` : "https://www.youtube.com/embed/videoseries?list=UUize2SQoXPI6RFQYbIGemIg"}
               title="Hazy Insight Videos" frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen style={{ borderRadius: '0.75rem', background: 'rgba(0,0,0,0.5)' }} />
@@ -192,12 +225,13 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
             {PIPELINE_STEPS.map((step, i) => (
               <motion.div key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 50, scale: 0.92, filter: 'blur(5px)' }}
+                whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1, duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ delay: i * 0.08, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
                 className="glass group hover-glow"
-                style={{ padding: '2rem 1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--background)', position: 'relative' }}>
+                style={{ padding: '2rem 1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--background)', position: 'relative', cursor: 'default' }}>
                 <div style={{ fontSize: '1.75rem', lineHeight: 1 }}>{step.icon}</div>
                 <div className="display-font group-hover-primary" style={{ color: 'rgba(255,255,255,0.18)', fontSize: '1rem', transition: 'color 0.3s' }}>{step.num}</div>
                 <h3 className="display-font" style={{ fontSize: '1.4rem', color: 'white', margin: 0 }}>{step.title}</h3>
@@ -216,7 +250,13 @@ export default function Home() {
             { value: '24', accent: '/', suffix: '7', label: 'Autonomous Production', color: 'var(--primary)' },
             { value: '0', accent: '.', suffix: '0', label: 'Local Hardware Required', color: 'var(--secondary)' },
           ].map((m, i) => (
-            <motion.div key={i} initial={{ opacity: 0, scale: 0.82 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.18, duration: 0.7 }}>
+            <motion.div key={i}
+              initial={{ opacity: 0, y: 60, rotateX: 15 }}
+              whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.22, duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+              style={{ transformPerspective: 800 }}
+            >
               <div className="display-font" style={{ fontSize: 'clamp(4rem,10vw,7.5rem)', color: 'white', letterSpacing: '-0.05em' }}>
                 {m.value}<span style={{ color: m.color }}>{m.accent}</span>{m.suffix}
               </div>
@@ -244,16 +284,20 @@ export default function Home() {
               </motion.div>
             ) : (
               <form onSubmit={handleContact} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <input
+                <motion.input
+                  whileFocus={{ scale: 1.02, borderColor: 'rgba(139,92,246,0.5)', boxShadow: '0 0 0 4px rgba(139,92,246,0.1)' }}
                   type="email" required value={email} onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  style={{ flex: '1 1 220px', maxWidth: '320px', padding: '0.875rem 1.25rem', borderRadius: '999px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', fontSize: '1rem', outline: 'none' }}
+                  style={{ flex: '1 1 220px', maxWidth: '320px', padding: '0.875rem 1.25rem', borderRadius: '999px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', fontSize: '1rem', outline: 'none', transition: 'all 0.2s ease' }}
                 />
-                <motion.button type="submit" whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                <motion.button type="submit" 
+                  whileHover={{ scale: 1.05, boxShadow: '0 8px 30px rgba(255,255,255,0.3)' }} 
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                   disabled={contactState === 'loading'}
-                  style={{ padding: '0.875rem 2rem', borderRadius: '999px', background: contactState === 'loading' ? 'rgba(255,255,255,0.4)' : 'white', color: 'black', fontWeight: 700, fontSize: '0.95rem', border: 'none', cursor: contactState === 'loading' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'background 0.2s' }}>
+                  style={{ padding: '0.875rem 2.25rem', borderRadius: '999px', background: contactState === 'loading' ? 'rgba(255,255,255,0.4)' : 'white', color: 'black', fontWeight: 800, fontSize: '0.95rem', border: 'none', cursor: contactState === 'loading' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {contactState === 'loading' ? (
-                    <><motion.span animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }} style={{ display: 'inline-block' }}>⟳</motion.span> Sending…</>
+                    <><motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} style={{ display: 'inline-block' }}>⟳</motion.span> Sending…</>
                   ) : 'Initialize Contact'}
                 </motion.button>
               </form>

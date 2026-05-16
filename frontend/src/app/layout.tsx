@@ -8,6 +8,13 @@ const syne = Syne({ subsets: ["latin"], variable: '--font-syne' });
 export const metadata: Metadata = {
   title: "Hazy Content Factory | Enterprise AI Video Production",
   description: "High-performance, cloud-native automated production pipeline for short-form media.",
+  icons: {
+    icon: [
+      { url: '/favicon.png', type: 'image/png' },
+    ],
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
 export default function RootLayout({
