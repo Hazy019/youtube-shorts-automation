@@ -92,13 +92,11 @@ jobs:
           fi
           echo "All critical secrets present."
 
-      # Verify ffmpeg — pre-installed on ubuntu-latest but confirm it's on PATH
-      - name: Verify ffmpeg
+      # Install ffmpeg — crucial for trimming videos before S3 upload (saves minutes!)
+      - name: Install FFmpeg
         run: |
-          echo "ffmpeg version:"
-          ffmpeg -version | head -1
-          echo "ffprobe version:"
-          ffprobe -version | head -1
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
       # Dependencies — Edge-TTS only (no ElevenLabs), no pip upgrade needed
       - name: Install Python Requirements
