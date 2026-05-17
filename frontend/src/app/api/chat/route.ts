@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     if (!limit.allowed) {
       const resetMins = Math.max(1, Math.ceil(limit.resetIn / 60000));
       return NextResponse.json({
-        reply: \`You've reached the free-tier message limit. Please wait \${resetMins} minute\${resetMins > 1 ? 's' : ''} before chatting again.\`,
+        reply: `You've reached the free-tier message limit. Please wait ${resetMins} minute${resetMins > 1 ? 's' : ''} before chatting again.`,
         rateLimited: true,
       }, { status: 429 });
     }
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
         // If successful, break out of the fallback loop
         if (reply) break;
       } catch (err) {
-        console.warn(\`[chat API] Model \${modelName} failed, trying next...\`, err);
+        console.warn(`[chat API] Model ${modelName} failed, trying next...`, err);
         lastError = err;
       }
     }
