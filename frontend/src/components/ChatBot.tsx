@@ -14,6 +14,26 @@ const SUGGESTED_PROMPTS = [
   'How can we collaborate?',
 ];
 
+const formatMessage = (text: string) => {
+  const lines = text.split('\n');
+  return lines.map((line, i) => {
+    const isHint = line.trim().startsWith('→');
+    const lineContent = line.split(/(\*\*.*?\*\*)/g).map((part, j) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={j}>{part.slice(2, -2)}</strong>;
+      }
+      return <span key={j}>{part}</span>;
+    });
+    
+    return (
+      <span key={i} style={isHint ? { color: 'var(--primary)', fontWeight: 600 } : undefined}>
+        {lineContent}
+        {i < lines.length - 1 && '\n'}
+      </span>
+    );
+  });
+};
+
 export default function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -102,15 +122,16 @@ export default function ChatBot() {
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             style={{
               position: 'fixed', bottom: '2rem', right: '2rem',
-              width: '56px', height: '56px', borderRadius: '50%',
+              height: '56px', borderRadius: '28px', padding: '0 20px',
               background: 'linear-gradient(135deg, #8b5cf6, #d946ef)',
               color: 'white', border: 'none',
               boxShadow: '0 8px 28px rgba(139,92,246,0.4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
               cursor: 'pointer', zIndex: 100,
             }}
           >
             <Zap size={20} />
+            <span style={{ fontWeight: 600, fontSize: '0.95rem' }} className="hide-mobile">Hazy AI</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -168,7 +189,20 @@ export default function ChatBot() {
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <button
+                  onClick={() => {
+                    setMessages([{ role: 'bot', text: "Hi, I'm Hazy AI — ask me about the pipeline, the tech, or how the Factory can scale your content." }]);
+                    setRemaining(null);
+                    setShowSuggestions(true);
+                  }}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  New Chat
+                </button>
                 {remaining !== null && remaining <= 3 && (
                   <span style={{ fontSize: '0.65rem', color: 'var(--secondary)', fontWeight: 600 }}>
                     {remaining} left
@@ -213,8 +247,10 @@ export default function ChatBot() {
                     fontSize: '0.845rem', lineHeight: 1.55,
                     boxShadow: msg.role === 'user' ? '0 4px 15px rgba(139,92,246,0.3)' : 'none',
                     whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'break-word',
                   }}>
-                    {msg.text}
+                    {formatMessage(msg.text)}
                   </div>
                 </motion.div>
               ))}

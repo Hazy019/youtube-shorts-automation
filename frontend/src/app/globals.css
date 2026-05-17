@@ -228,12 +228,21 @@ button { font-family: inherit; }
 /* ── Ticker ── */
 @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 .ticker-track { display: flex; width: max-content; animation: ticker 40s linear infinite; }
+.ticker-track:hover { animation-play-state: paused; }
 
 /* ── Pipeline Grid ── */
 .pipeline-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
+}
+
+/* ── Video Showcase Grid ── */
+.video-showcase-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.22fr 1fr;
+  gap: 1.25rem;
+  align-items: end;
 }
 
 /* ── Scrollbar ── */
@@ -246,6 +255,12 @@ button { font-family: inherit; }
 @media (max-width: 1024px) {
   .pipeline-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .video-showcase-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .video-showcase-grid > *:last-child {
+    display: none;
   }
 }
 
@@ -263,6 +278,13 @@ button { font-family: inherit; }
 
   .pipeline-grid {
     grid-template-columns: 1fr;
+  }
+
+  .video-showcase-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .video-showcase-grid > *:last-child {
+    display: flex !important;
   }
 
   .hero-title {

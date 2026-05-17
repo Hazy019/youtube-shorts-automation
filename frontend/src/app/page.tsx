@@ -47,15 +47,20 @@ const INTEGRITY_CARDS = [
   { stat: '100%', label: 'Serverless Render', sub: 'Zero local hardware. Every render runs on AWS Lambda inside Remotion.', note: 'No local GPU or CPU required' },
 ];
 
+const SHOWCASE_VIDEOS = [
+  { id: 't8_WYIEzPPI', title: 'The Lake That Killed 1700 People in Their Sleep', label: 'Science' },
+  { id: 'BiRAyUvX9Bw', title: "The Soviet Navy's Deepest Secret", label: 'History' },
+  { id: 'ejRl1Um4fFI', title: 'The Love Glitch in Your Brain', label: 'Psychology' },
+];
+
 export default function Home() {
   const containerRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: containerRef, offset: ['start start', 'end end'] });
   const [isScrolled, setIsScrolled] = useState(false);
   const [contactState, setContactState] = useState<'idle' | 'loading' | 'done'>('idle');
-  const [email, setEmail] = useState('');
-  const [latestVideoId, setLatestVideoId] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [starCount, setStarCount] = useState<string>('...');
+  const [activeVideo, setActiveVideo] = useState(0);
 
   // Initialize theme from storage
   useEffect(() => {
@@ -74,14 +79,6 @@ export default function Home() {
   useEffect(() => {
     const h = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', h);
-    
-    // Fetch the latest video from our dynamic API route
-    fetch('/api/latest-video')
-      .then(res => res.json())
-      .then(data => {
-        if (data.videoId) setLatestVideoId(data.videoId);
-      })
-      .catch(err => console.error('Failed to load latest video:', err));
 
     // Fetch GitHub stars
     fetch('https://api.github.com/repos/Hazy019/youtube-shorts-automator')
@@ -101,18 +98,28 @@ export default function Home() {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
   const glowYLeft = useTransform(scrollYProgress, [0, 1], [0, 400]);
   const glowYRight = useTransform(scrollYProgress, [0, 1], [0, -200]);
-  
-  // Results section parallax scale down
-  const resultsScale = useTransform(scrollYProgress, [0.3, 0.6], [1, 0.92]);
 
-  const handleContact = (e: React.FormEvent) => {
+  const handleContact = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    // Open mailto with the user's email pre-filled
-    const subject = encodeURIComponent('Collaboration Inquiry — Hazy Content Factory');
-    const body = encodeURIComponent(`Hi,\n\nI'm interested in learning more about the Hazy Content Factory and potential collaboration.\n\nReach me at: ${email}\n\nLooking forward to hearing from you.`);
-    window.open(`mailto:hazyinsight@gmail.com?subject=${subject}&body=${body}`, '_blank');
-    setContactState('done');
+    if (contactState === 'loading') return;
+    setContactState('loading');
+    const form = e.target as HTMLFormElement;
+    const data = new FormData(form);
+    try {
+      const res = await fetch('https://formspree.io/f/meedjlpe', {
+        method: 'POST',
+        body: data,
+        headers: { Accept: 'application/json' },
+      });
+      if (res.ok) {
+        setContactState('done');
+        form.reset();
+      } else {
+        setContactState('idle');
+      }
+    } catch {
+      setContactState('idle');
+    }
   };
 
   return (
@@ -307,35 +314,115 @@ export default function Home() {
       </section>
 
       {/* ─── RESULTS ─── */}
-      <section id="work" style={{ padding: '9rem 0', position: 'relative' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1.5rem' }}>
+      <section id="work" style={{ padding: '9rem 0', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)', width: '60vw', height: '300px', background: 'rgba(139,92,246,0.06)', filter: 'blur(100px)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ maxWidth: '1300px', margin: '0 auto', padding: '0 1.5rem', position: 'relative', zIndex: 1 }}>
           <motion.div
-            initial={{ opacity: 0, letterSpacing: '0.4em' }}
-            whileInView={{ opacity: 1, letterSpacing: '0em' }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            style={{ textAlign: 'center', marginBottom: '4rem' }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-100px' }}
+            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            style={{ textAlign: 'center', marginBottom: '5rem' }}
           >
-            <span style={{ color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '1rem' }}>( Output )</span>
-            <h2 className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'var(--foreground)' }}>The Results.</h2>
+            <span style={{ color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.15em', fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '1rem' }}>( Live Output )</span>
+            <h2 className="display-font" style={{ fontSize: 'clamp(2.5rem,6vw,4.5rem)', color: 'var(--foreground)', marginBottom: '1rem' }}>The Results.</h2>
+            <p style={{ color: 'var(--foreground-muted)', fontSize: '1.05rem', maxWidth: '30rem', margin: '0 auto', lineHeight: 1.7 }}>
+              Real videos. Real views. Machine-authored, machine-rendered, machine-uploaded.
+            </p>
           </motion.div>
-          
-          {/* Scroll-linked scale parallax for video container */}
+
+          {/* ── 3-Video Portrait Showcase ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.22fr 1fr', gap: '1.25rem', alignItems: 'end' }} className="video-showcase-grid">
+            {/* Left support video */}
+            <motion.div
+              {...ANIM_RISE}
+              transition={{ ...ANIM_RISE.transition, delay: 0.15 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}
+            >
+              <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', border: '1px solid var(--card-border)', background: '#000', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', aspectRatio: '9/16' }}>
+                <iframe
+                  src={`https://www.youtube.com/embed/${SHOWCASE_VIDEOS[1].id}?rel=0&modestbranding=1`}
+                  title={SHOWCASE_VIDEOS[1].title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                />
+              </div>
+              <div style={{ padding: '0 0.25rem' }}>
+                <span style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 700 }}>{SHOWCASE_VIDEOS[1].label}</span>
+                <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginTop: '0.2rem', lineHeight: 1.4 }}>{SHOWCASE_VIDEOS[1].title}</p>
+              </div>
+            </motion.div>
+
+            {/* ★ Center "Star of the Show" — featured video */}
+            <motion.div
+              {...ANIM_RISE}
+              transition={{ ...ANIM_RISE.transition, delay: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}
+            >
+              <div style={{ position: 'relative' }}>
+                {/* Glow halo under the star video */}
+                <div style={{ position: 'absolute', inset: '-12px', borderRadius: '1.5rem', background: 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(217,70,239,0.2))', filter: 'blur(20px)', zIndex: 0 }} />
+                <div style={{ position: 'relative', borderRadius: '1.25rem', overflow: 'hidden', border: '1.5px solid rgba(139,92,246,0.4)', background: '#000', boxShadow: '0 32px 80px rgba(139,92,246,0.25), 0 8px 30px rgba(0,0,0,0.6)', aspectRatio: '9/16', zIndex: 1 }}>
+                  <iframe
+                    src={`https://www.youtube.com/embed/${SHOWCASE_VIDEOS[0].id}?rel=0&modestbranding=1`}
+                    title={SHOWCASE_VIDEOS[0].title}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                  />
+                </div>
+              </div>
+              <div style={{ padding: '0 0.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                  <span style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--secondary)', fontWeight: 700 }}>{SHOWCASE_VIDEOS[0].label}</span>
+                  <span style={{ fontSize: '0.6rem', padding: '0.15rem 0.5rem', borderRadius: '999px', background: 'rgba(139,92,246,0.15)', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.05em' }}>★ FEATURED</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--foreground)', marginTop: '0.1rem', lineHeight: 1.4, fontWeight: 600 }}>{SHOWCASE_VIDEOS[0].title}</p>
+              </div>
+            </motion.div>
+
+            {/* Right support video */}
+            <motion.div
+              {...ANIM_RISE}
+              transition={{ ...ANIM_RISE.transition, delay: 0.3 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}
+            >
+              <div style={{ position: 'relative', borderRadius: '1rem', overflow: 'hidden', border: '1px solid var(--card-border)', background: '#000', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', aspectRatio: '9/16' }}>
+                <iframe
+                  src={`https://www.youtube.com/embed/${SHOWCASE_VIDEOS[2].id}?rel=0&modestbranding=1`}
+                  title={SHOWCASE_VIDEOS[2].title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                />
+              </div>
+              <div style={{ padding: '0 0.25rem' }}>
+                <span style={{ fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 700 }}>{SHOWCASE_VIDEOS[2].label}</span>
+                <p style={{ fontSize: '0.8rem', color: 'var(--foreground-muted)', marginTop: '0.2rem', lineHeight: 1.4 }}>{SHOWCASE_VIDEOS[2].title}</p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Channel link */}
           <motion.div
-            style={{ 
-              scale: resultsScale,
-              borderRadius: '1.5rem', overflow: 'hidden', padding: 'clamp(1rem,3vw,2rem)', 
-              aspectRatio: '16/9', maxWidth: '56rem', margin: '0 auto', 
-              boxShadow: '0 0 80px rgba(139,92,246,0.15)',
-              background: 'var(--card-bg)',
-              border: '1px solid var(--card-border)',
-              backdropFilter: 'blur(20px)'
-            }}>
-            <iframe width="100%" height="100%"
-              src={latestVideoId ? `https://www.youtube.com/embed/${latestVideoId}` : "https://www.youtube.com/embed/videoseries?list=UUize2SQoXPI6RFQYbIGemIg"}
-              title="Hazy Insight Videos" frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen style={{ borderRadius: '0.75rem', background: 'rgba(0,0,0,0.5)' }} />
+            {...ANIM_BLUR_UP}
+            transition={{ ...ANIM_BLUR_UP.transition, delay: 0.4 }}
+            style={{ textAlign: 'center', marginTop: '3rem' }}
+          >
+            <a
+              href="https://www.youtube.com/@Hazy_Insight/shorts"
+              target="_blank" rel="noopener noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--foreground-muted)', border: '1px solid var(--card-border)', padding: '0.6rem 1.4rem', borderRadius: '999px', transition: 'all 0.25s ease', background: 'var(--card-bg)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--foreground)'; (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(139,92,246,0.4)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--foreground-muted)'; (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--card-border)'; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+              View all Shorts on YouTube
+            </a>
           </motion.div>
         </div>
       </section>
@@ -395,41 +482,58 @@ export default function Home() {
 
       {/* ─── CONTACT ─── */}
       <section id="contact" style={{ padding: '9rem 1.5rem', backgroundColor: 'var(--background)', borderTop: '1px solid var(--card-border)' }}>
-        <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ maxWidth: '560px', margin: '0 auto', textAlign: 'center' }}>
           <motion.div {...ANIM_BLUR_UP}>
             <h2 className="display-font" style={{ fontSize: 'clamp(3rem,8vw,5rem)', color: 'var(--foreground)', marginBottom: '1.25rem', lineHeight: 1 }}>
               Scale Your <br /><span className="text-gradient-primary">Vision.</span>
             </h2>
-            <p style={{ color: 'var(--foreground-muted)', fontSize: '1.15rem', maxWidth: '30rem', margin: '0 auto 3rem', lineHeight: 1.7 }}>
-              Stop managing creators. Start managing infrastructure. Enter your email and click the button — it will open your mail client with a pre-filled message sent directly to us.
+            <p style={{ color: 'var(--foreground-muted)', fontSize: '1.1rem', maxWidth: '28rem', margin: '0 auto 2.5rem', lineHeight: 1.7 }}>
+              Tell us about your vision. We&apos;ll respond within 24 hours.
             </p>
 
             {contactState === 'done' ? (
               <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                style={{ padding: '2rem', borderRadius: '1rem', border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.06)', color: '#22c55e', fontSize: '1.1rem', fontWeight: 600 }}>
-                ✓ Received. We'll be in touch shortly.
+                style={{ padding: '2rem', borderRadius: '1.25rem', border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.06)', color: '#22c55e', fontSize: '1.1rem', fontWeight: 600 }}>
+                ✓ Message received. We&apos;ll be in touch shortly.
               </motion.div>
             ) : (
-              <form onSubmit={handleContact} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <motion.input
-                  whileFocus={{ scale: 1.02, borderColor: 'rgba(139,92,246,0.5)', boxShadow: '0 0 0 4px rgba(139,92,246,0.1)' }}
-                  type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  style={{ flex: '1 1 220px', maxWidth: '320px', padding: '0.875rem 1.25rem', borderRadius: '999px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '1rem', outline: 'none', transition: 'all 0.2s ease' }}
-                />
+              <form onSubmit={handleContact} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', textAlign: 'left' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Your Name</label>
+                  <input
+                    type="text" name="name" required
+                    placeholder="Kyrell Santillan"
+                    style={{ padding: '0.825rem 1.1rem', borderRadius: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '0.95rem', outline: 'none', transition: 'border-color 0.2s', fontFamily: 'inherit' }}
+                    onFocus={e => (e.target.style.borderColor = 'rgba(139,92,246,0.5)')}
+                    onBlur={e => (e.target.style.borderColor = 'var(--card-border)')}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Message</label>
+                  <textarea
+                    name="message" required rows={4}
+                    placeholder="Tell us what you&apos;re building or what you need..."
+                    style={{ padding: '0.825rem 1.1rem', borderRadius: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '0.95rem', outline: 'none', transition: 'border-color 0.2s', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.6, minHeight: '120px' }}
+                    onFocus={e => (e.target.style.borderColor = 'rgba(139,92,246,0.5)')}
+                    onBlur={e => (e.target.style.borderColor = 'var(--card-border)')}
+                  />
+                </div>
                 <motion.button type="submit"
-                  whileHover={{ scale: 1.05, boxShadow: '0 8px 32px rgba(139,92,246,0.45)' }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02, boxShadow: '0 10px 36px rgba(139,92,246,0.45)' }}
+                  whileTap={{ scale: 0.97 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                  disabled={contactState === 'loading'}
                   style={{
-                    padding: '0.875rem 2.25rem', borderRadius: '999px',
-                    background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-                    color: 'white', fontWeight: 800, fontSize: '0.95rem',
-                    border: 'none', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    marginTop: '0.5rem',
+                    padding: '0.925rem 2rem', borderRadius: '0.75rem',
+                    background: contactState === 'loading' ? 'var(--foreground-subtle)' : 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                    color: 'white', fontWeight: 700, fontSize: '0.95rem',
+                    border: 'none', cursor: contactState === 'loading' ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                     boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
+                    transition: 'background 0.3s',
                   }}>
-                  Initialize Contact ↗
+                  {contactState === 'loading' ? 'Sending...' : 'Send Inquiry →'}
                 </motion.button>
               </form>
             )}
@@ -438,11 +542,27 @@ export default function Home() {
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer style={{ padding: '2.5rem 1.5rem', borderTop: '1px solid var(--card-border)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', color: 'var(--foreground-muted)', fontSize: '0.85rem' }}>
-        <div className="display-font" style={{ fontSize: '1.2rem', color: 'var(--foreground-muted)' }}>HAZY.</div>
-        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-          <a href="/docs" className="nav-link" style={{ fontSize: '0.8rem' }}>Documentation</a>
-          <p style={{ margin: 0 }}>© 2026 Designed for scale. Built for performance.</p>
+      <footer style={{ padding: '0', borderTop: '1px solid var(--card-border)' }}>
+        {/* Kyrell identity strip */}
+        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', background: 'rgba(139,92,246,0.03)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--foreground-subtle)', letterSpacing: '0.04em' }}>
+            Engineered by{' '}
+            <a href="https://github.com/Hazy019" target="_blank" rel="noopener noreferrer"
+              style={{ color: 'var(--primary)', fontWeight: 600, transition: 'opacity 0.2s' }}
+              onMouseEnter={e => ((e.target as HTMLElement).style.opacity = '0.75')}
+              onMouseLeave={e => ((e.target as HTMLElement).style.opacity = '1')}
+            >Kyrell Santillan</a>
+            {' '}·{' '}
+            <span style={{ color: 'var(--foreground-muted)' }}>Available for senior engineering roles</span>
+          </span>
+        </div>
+        {/* Main footer row */}
+        <div style={{ padding: '1.75rem 1.5rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', color: 'var(--foreground-muted)', fontSize: '0.85rem', gap: '1rem' }}>
+          <div className="display-font" style={{ fontSize: '1.2rem', color: 'var(--foreground-muted)' }}>HAZY.</div>
+          <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+            <a href="/docs" className="nav-link" style={{ fontSize: '0.8rem' }}>Documentation</a>
+            <p style={{ margin: 0 }}>© 2026 Designed for scale. Built for performance.</p>
+          </div>
         </div>
       </footer>
 
