@@ -156,10 +156,25 @@ button { font-family: inherit; }
   background: rgba(139, 92, 246, 0.1);
 }
 
+/* ── Mobile hamburger ──
+   Hidden on desktop, shown in the 768px media query below.
+   CSS controls visibility — NOT the inline style. */
+.mobile-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 /* ── Button Shimmer ── */
 @keyframes shimmer {
   0%   { transform: translateX(-100%) skewX(-20deg); }
   100% { transform: translateX(250%) skewX(-20deg); }
+}
+
+/* ── Loading spinner (contact form) ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .nav-cta {
@@ -240,9 +255,18 @@ button { font-family: inherit; }
 /* ── Video Showcase Grid ── */
 .video-showcase-grid {
   display: grid;
-  grid-template-columns: 1fr 1.22fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 1.25rem;
   align-items: end;
+}
+
+/* ── Contact 2-Column Grid ── */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+  min-height: 500px;
 }
 
 /* ── Scrollbar ── */
@@ -276,6 +300,15 @@ button { font-family: inherit; }
   .nav-links { display: none !important; }
   .hide-mobile { display: none !important; }
 
+  /* Show hamburger on mobile */
+  .mobile-menu-toggle { display: flex !important; }
+
+  /* Disable sticky on philosophy '01' — prevents it from pinning over content */
+  .philosophy-num-col {
+    position: relative !important;
+    top: auto !important;
+  }
+
   .pipeline-grid {
     grid-template-columns: 1fr;
   }
@@ -289,13 +322,36 @@ button { font-family: inherit; }
 
   .hero-title {
     font-size: clamp(2.8rem, 14vw, 6rem) !important;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Contact: stack to single column on mobile */
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+    gap: 3rem !important;
+    min-height: auto !important;
+  }
+
+  /* Footer: stack gracefully on mobile */
+  footer > div:last-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+  }
+  footer > div:last-child > div {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
   }
 }
 
 @media (max-width: 480px) {
   .hero-title {
-    font-size: clamp(2.4rem, 12vw, 5rem) !important;
+    font-size: clamp(2.2rem, 11vw, 4rem) !important;
     word-break: break-word;
+    overflow-wrap: break-word;
+    letter-spacing: -0.04em !important;
   }
 }
 

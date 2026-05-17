@@ -205,14 +205,14 @@ export default function Home() {
           {/* CTA */}
           <a href="#contact" className="nav-cta hide-mobile">Scale Together</a>
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile Menu Toggle — visibility controlled by CSS media query, not inline style */}
           <button 
             className="mobile-menu-toggle" 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle Menu"
             style={{ 
               background: 'transparent', border: 'none', color: 'var(--foreground)',
-              cursor: 'pointer', display: 'none', padding: '0.25rem' 
+              cursor: 'pointer', padding: '0.25rem' 
             }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -307,8 +307,8 @@ export default function Home() {
       <section id="about" style={{ padding: '12rem 1.5rem', maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '3rem', alignItems: 'start' }}>
           
-          {/* Sticky Left Column for '01' */}
-          <div style={{ position: 'sticky', top: '25vh', zIndex: 0 }}>
+          {/* Sticky Left Column for '01' — position:sticky disabled on mobile via CSS */}
+          <div className="philosophy-num-col" style={{ position: 'sticky', top: '25vh', zIndex: 0 }}>
             <motion.div {...ANIM_SLIDE_LEFT}>
               <span className="display-font text-gradient" style={{ fontSize: 'clamp(8rem,20vw,16rem)', lineHeight: 0.8, letterSpacing: '-0.05em', marginLeft: '-1rem', display: 'block', opacity: 0.2 }}>01</span>
               <div style={{ width: '100px', height: '4px', background: 'linear-gradient(90deg, #8b5cf6, transparent)', marginTop: '2rem' }} />
@@ -384,7 +384,7 @@ export default function Home() {
           </motion.div>
 
           {/* ── 3-Video Portrait Showcase ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.22fr 1fr', gap: '1.25rem', alignItems: 'end', maxWidth: '1000px', margin: '0 auto' }} className="video-showcase-grid">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem', alignItems: 'end', maxWidth: '960px', margin: '0 auto' }} className="video-showcase-grid">
             {/* Left support video */}
             <motion.div
               {...ANIM_RISE}
@@ -533,68 +533,116 @@ export default function Home() {
       </section>
 
       {/* ─── CONTACT ─── */}
-      <section id="contact" style={{ padding: '9rem 1.5rem', backgroundColor: 'var(--background)', borderTop: '1px solid var(--card-border)' }}>
-        <div style={{ maxWidth: '560px', margin: '0 auto', textAlign: 'center' }}>
-          <motion.div {...ANIM_BLUR_UP}>
-            <h2 className="display-font" style={{ fontSize: 'clamp(3rem,8vw,5rem)', color: 'var(--foreground)', marginBottom: '1.25rem', lineHeight: 1 }}>
-              Scale Your <br /><span className="text-gradient-primary">Vision.</span>
-            </h2>
-            <p style={{ color: 'var(--foreground-muted)', fontSize: '1.1rem', maxWidth: '28rem', margin: '0 auto 2.5rem', lineHeight: 1.7 }}>
-              Tell us about your vision. We&apos;ll respond within 24 hours.
-            </p>
+      <section id="contact" style={{ padding: '9rem 1.5rem', backgroundColor: 'var(--background)', borderTop: '1px solid var(--card-border)', position: 'relative', overflow: 'hidden' }}>
+        {/* Background glow */}
+        <div style={{ position: 'absolute', top: '30%', right: '-5%', width: '500px', height: '500px', background: 'rgba(139,92,246,0.06)', borderRadius: '50%', filter: 'blur(100px)', pointerEvents: 'none' }} />
+        <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <div className="contact-grid">
 
-            {contactState === 'done' ? (
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                style={{ padding: '2rem', borderRadius: '1.25rem', border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.06)', color: '#22c55e', fontSize: '1.1rem', fontWeight: 600 }}>
-                ✓ Message received. We'll be in touch shortly.
-              </motion.div>
-            ) : (
-              <motion.div 
-                className="glass hover-glow"
-                style={{ padding: '2.5rem 2rem', borderRadius: '1.25rem', textAlign: 'left', position: 'relative' }}
-              >
-                <form onSubmit={handleContact} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Your Name</label>
-                    <input
-                      type="text" name="name" required
-                      placeholder="Kyrell Santillan"
-                      style={{ padding: '1rem 1.25rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', fontFamily: 'inherit' }}
-                      onFocus={e => { e.target.style.borderColor = 'rgba(139,92,246,0.6)'; e.target.style.background = 'rgba(0,0,0,0.3)'; }}
-                      onBlur={e => { e.target.style.borderColor = 'var(--card-border)'; e.target.style.background = 'rgba(0,0,0,0.2)'; }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Message</label>
-                    <textarea
-                      name="message" required rows={4}
-                      placeholder="Tell us what you're building or what you need..."
-                      style={{ padding: '1rem 1.25rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.6, minHeight: '120px' }}
-                      onFocus={e => { e.target.style.borderColor = 'rgba(139,92,246,0.6)'; e.target.style.background = 'rgba(0,0,0,0.3)'; }}
-                      onBlur={e => { e.target.style.borderColor = 'var(--card-border)'; e.target.style.background = 'rgba(0,0,0,0.2)'; }}
-                    />
-                  </div>
-                  <motion.button type="submit"
-                    whileHover={{ scale: 1.02, boxShadow: '0 10px 36px rgba(139,92,246,0.45)' }}
-                    whileTap={{ scale: 0.97 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                    disabled={contactState === 'loading'}
-                    style={{
-                      marginTop: '0.75rem',
-                      padding: '1.1rem 2rem', borderRadius: '0.75rem',
-                      background: contactState === 'loading' ? 'var(--foreground-subtle)' : 'linear-gradient(135deg, var(--primary), var(--secondary))',
-                      color: 'white', fontWeight: 700, fontSize: '1rem',
-                      border: 'none', cursor: contactState === 'loading' ? 'not-allowed' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                      boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
-                      transition: 'background 0.3s',
-                    }}>
-                    {contactState === 'loading' ? 'Sending...' : 'Send Inquiry →'}
-                  </motion.button>
-                </form>
-              </motion.div>
-            )}
-          </motion.div>
+            {/* ── LEFT — Info Panel ── */}
+            <motion.div {...ANIM_SLIDE_LEFT} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <span style={{ color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '1.25rem' }}>( Start a Conversation )</span>
+              <h2 className="display-font" style={{ fontSize: 'clamp(2.8rem,5vw,4.5rem)', color: 'var(--foreground)', marginBottom: '1.25rem', lineHeight: 1.05 }}>
+                Scale Your <br /><span className="text-gradient-primary">Vision.</span>
+              </h2>
+              <p style={{ color: 'var(--foreground-muted)', fontSize: '1.1rem', maxWidth: '26rem', lineHeight: 1.7, marginBottom: '2.5rem' }}>
+                Have a content goal, a project idea, or want to understand how the Factory works? Send a message — Kyrell responds within 24 hours.
+              </p>
+
+              {/* Feature chips */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {[
+                  { icon: '⚡', label: '24/7 Autonomous Production', sub: 'Zero human intervention after setup' },
+                  { icon: '🌍', label: 'Multi-Platform Distribution', sub: 'YouTube · TikTok · Meta Reels simultaneously' },
+                  { icon: '☁️', label: '100% Serverless Rendering', sub: 'AWS Lambda — no local hardware needed' },
+                  { icon: '📬', label: 'Response within 24 hours', sub: 'Direct line to the creator' },
+                ].map((feat, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem' }}
+                  >
+                    <div style={{
+                      width: '38px', height: '38px', borderRadius: '10px', flexShrink: 0,
+                      background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem',
+                    }}>{feat.icon}</div>
+                    <div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.1rem' }}>{feat.label}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--foreground-muted)' }}>{feat.sub}</div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* ── RIGHT — Form Panel ── */}
+            <motion.div {...ANIM_SLIDE_RIGHT}>
+              {contactState === 'done' ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  style={{ padding: '3rem 2.5rem', borderRadius: '1.5rem', border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.06)', color: '#22c55e', fontSize: '1.15rem', fontWeight: 600, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}
+                >
+                  <div style={{ fontSize: '2.5rem' }}>✓</div>
+                  <div>Message received.</div>
+                  <div style={{ fontSize: '0.9rem', color: 'rgba(34,197,94,0.7)', fontWeight: 400 }}>Kyrell will be in touch within 24 hours.</div>
+                </motion.div>
+              ) : (
+                <div
+                  className="glass hover-glow"
+                  style={{ padding: '2.5rem', borderRadius: '1.5rem', height: '100%', boxSizing: 'border-box' }}
+                >
+                  <h3 className="display-font" style={{ fontSize: '1.25rem', color: 'var(--foreground)', marginBottom: '0.5rem' }}>Send a Message</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--foreground-muted)', marginBottom: '1.75rem', lineHeight: 1.6 }}>Fill in the form and I&apos;ll get back to you shortly.</p>
+                  <form onSubmit={handleContact} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--foreground-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Your Name</label>
+                      <input
+                        type="text" name="name" required
+                        placeholder="e.g. Kyrell Santillan"
+                        style={{ padding: '0.9rem 1.1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '0.95rem', outline: 'none', transition: 'all 0.2s', fontFamily: 'inherit', width: '100%' }}
+                        onFocus={e => { e.target.style.borderColor = 'rgba(139,92,246,0.6)'; e.target.style.background = 'rgba(0,0,0,0.3)'; }}
+                        onBlur={e => { e.target.style.borderColor = 'var(--card-border)'; e.target.style.background = 'rgba(0,0,0,0.2)'; }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--foreground-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Your Message</label>
+                      <textarea
+                        name="message" required rows={5}
+                        placeholder="Tell us what you're building, your content goal, or what you need help with..."
+                        style={{ padding: '0.9rem 1.1rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '0.95rem', outline: 'none', transition: 'all 0.2s', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.65, minHeight: '130px', width: '100%' }}
+                        onFocus={e => { e.target.style.borderColor = 'rgba(139,92,246,0.6)'; e.target.style.background = 'rgba(0,0,0,0.3)'; }}
+                        onBlur={e => { e.target.style.borderColor = 'var(--card-border)'; e.target.style.background = 'rgba(0,0,0,0.2)'; }}
+                      />
+                    </div>
+                    <motion.button type="submit"
+                      whileHover={{ scale: 1.02, boxShadow: '0 10px 36px rgba(139,92,246,0.45)' }}
+                      whileTap={{ scale: 0.97 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                      disabled={contactState === 'loading'}
+                      style={{
+                        marginTop: '0.5rem',
+                        padding: '1rem 2rem', borderRadius: '0.75rem',
+                        background: contactState === 'loading' ? 'var(--foreground-subtle)' : 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                        color: 'white', fontWeight: 700, fontSize: '1rem',
+                        border: 'none', cursor: contactState === 'loading' ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                        boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
+                        transition: 'background 0.3s', width: '100%',
+                      }}>
+                      {contactState === 'loading' ? (
+                        <><span style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} /> Sending...</>
+                      ) : 'Send Inquiry →'}
+                    </motion.button>
+                  </form>
+                </div>
+              )}
+            </motion.div>
+
+          </div>
         </div>
       </section>
 

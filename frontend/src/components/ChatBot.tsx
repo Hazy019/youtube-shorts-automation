@@ -85,18 +85,37 @@ export default function ChatBot() {
         body: JSON.stringify({ message: trimmed, history })
       });
 
-      const data = await res.json();
-
-      if (res.status === 429 || data.rateLimited) {
+      // ── Smart error discrimination ──
+      // The API returns 429 for rate limits, 500 for server crashes.
+      // Showing different messages for each is critical UX — a working rate
+      // limiter should NEVER look like a broken connection to the user.
+      if (res.status === 429) {
+        const data = await res.json();
         setIsRateLimited(true);
-        setMessages(prev => [...prev, { role: 'bot', text: data.reply }]);
+        setMessages(prev => [...prev, {
+          role: 'bot',
+          text: data.reply ?? "⏱ Slow down, captain! You've hit the rate limit. Please wait a few minutes before chatting again.",
+        }]);
         return;
       }
 
+      if (res.status === 500 || !res.ok) {
+        setMessages(prev => [...prev, {
+          role: 'bot',
+          text: "I'm having a brief connectivity issue on my end. Please try again in a moment.",
+        }]);
+        return;
+      }
+
+      const data = await res.json();
       if (data.remaining !== undefined) setRemaining(data.remaining);
       setMessages(prev => [...prev, { role: 'bot', text: data.reply }]);
     } catch {
-      setMessages(prev => [...prev, { role: 'bot', text: "I'm having trouble connecting right now. Please try again in a moment." }]);
+      // Network-level failure (no response at all — user is offline, DNS failed, etc.)
+      setMessages(prev => [...prev, {
+        role: 'bot',
+        text: "Looks like there's a network issue. Check your connection and try again.",
+      }]);
     } finally {
       setIsLoading(false);
     }
