@@ -294,7 +294,8 @@ button { font-family: inherit; }
 
 @media (max-width: 480px) {
   .hero-title {
-    font-size: clamp(2.4rem, 16vw, 5rem) !important;
+    font-size: clamp(2.4rem, 12vw, 5rem) !important;
+    word-break: break-word;
   }
 }
 
@@ -321,7 +322,7 @@ button { font-family: inherit; }
   flex: 1;
   padding: 3rem 4rem;
   min-width: 0;
-  max-width: 760px;
+  max-width: 1000px;
 }
 
 .docs-toc {

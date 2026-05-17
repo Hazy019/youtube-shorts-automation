@@ -61,6 +61,7 @@ export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [starCount, setStarCount] = useState<string>('...');
   const [activeVideo, setActiveVideo] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Initialize theme from storage
   useEffect(() => {
@@ -202,9 +203,60 @@ export default function Home() {
           </button>
 
           {/* CTA */}
-          <a href="#contact" className="nav-cta">Scale Together</a>
+          <a href="#contact" className="nav-cta hide-mobile">Scale Together</a>
+
+          {/* Mobile Menu Toggle */}
+          <button 
+            className="mobile-menu-toggle" 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle Menu"
+            style={{ 
+              background: 'transparent', border: 'none', color: 'var(--foreground)',
+              cursor: 'pointer', display: 'none', padding: '0.25rem' 
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {isMobileMenuOpen ? (
+                <><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></>
+              ) : (
+                <><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></>
+              )}
+            </svg>
+          </button>
         </div>
       </motion.nav>
+
+      {/* Mobile Menu Dropdown */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+            transition={{ duration: 0.2 }}
+            className="glass"
+            style={{
+              position: 'fixed', top: '5rem', left: '4%', right: '4%', zIndex: 49,
+              borderRadius: '1rem', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
+              border: '1px solid var(--card-border)', boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+            }}
+          >
+            <a href="#about" onClick={() => setIsMobileMenuOpen(false)} className="nav-link" style={{ fontSize: '1.1rem', fontWeight: 600 }}>Philosophy</a>
+            <a href="#integrity" onClick={() => setIsMobileMenuOpen(false)} className="nav-link" style={{ fontSize: '1.1rem', fontWeight: 600 }}>Integrity</a>
+            <a href="#work" onClick={() => setIsMobileMenuOpen(false)} className="nav-link" style={{ fontSize: '1.1rem', fontWeight: 600 }}>Output</a>
+            <a href="#machine" onClick={() => setIsMobileMenuOpen(false)} className="nav-link" style={{ fontSize: '1.1rem', fontWeight: 600 }}>Pipeline</a>
+            <a href="/docs" onClick={() => setIsMobileMenuOpen(false)} className="nav-link" style={{ fontSize: '1.1rem', fontWeight: 600 }}>Docs</a>
+            <a href="#contact" onClick={() => setIsMobileMenuOpen(false)} className="nav-link" style={{ fontSize: '1.1rem', fontWeight: 600 }}>Contact</a>
+            
+            <div style={{ height: '1px', background: 'var(--card-border)', margin: '0.5rem 0' }} />
+            
+            <a href="https://github.com/Hazy019/youtube-shorts-automator" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', fontWeight: 600, color: 'var(--foreground-muted)' }}>
+              <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" /></svg>
+              GitHub ({starCount})
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─── HERO ─── */}
       <section style={{ position: 'relative', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
@@ -256,7 +308,7 @@ export default function Home() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '3rem', alignItems: 'start' }}>
           
           {/* Sticky Left Column for '01' */}
-          <div style={{ position: 'sticky', top: '25vh' }}>
+          <div style={{ position: 'sticky', top: '25vh', zIndex: 0 }}>
             <motion.div {...ANIM_SLIDE_LEFT}>
               <span className="display-font text-gradient" style={{ fontSize: 'clamp(8rem,20vw,16rem)', lineHeight: 0.8, letterSpacing: '-0.05em', marginLeft: '-1rem', display: 'block', opacity: 0.2 }}>01</span>
               <div style={{ width: '100px', height: '4px', background: 'linear-gradient(90deg, #8b5cf6, transparent)', marginTop: '2rem' }} />
@@ -269,7 +321,7 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             viewport={{ once: true, margin: "-150px" }}
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            style={{ paddingTop: '2rem' }}
+            style={{ paddingTop: '2rem', zIndex: 10, position: 'relative' }}
           >
             <div className="display-font" style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', color: 'var(--foreground)', lineHeight: 1.15, marginBottom: '1.75rem' }}>
               <RevealText text="We removed the human bottleneck from production." />
@@ -332,7 +384,7 @@ export default function Home() {
           </motion.div>
 
           {/* ── 3-Video Portrait Showcase ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.22fr 1fr', gap: '1.25rem', alignItems: 'end' }} className="video-showcase-grid">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.22fr 1fr', gap: '1.25rem', alignItems: 'end', maxWidth: '1000px', margin: '0 auto' }} className="video-showcase-grid">
             {/* Left support video */}
             <motion.div
               {...ANIM_RISE}
@@ -494,48 +546,53 @@ export default function Home() {
             {contactState === 'done' ? (
               <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                 style={{ padding: '2rem', borderRadius: '1.25rem', border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.06)', color: '#22c55e', fontSize: '1.1rem', fontWeight: 600 }}>
-                ✓ Message received. We&apos;ll be in touch shortly.
+                ✓ Message received. We'll be in touch shortly.
               </motion.div>
             ) : (
-              <form onSubmit={handleContact} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', textAlign: 'left' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Your Name</label>
-                  <input
-                    type="text" name="name" required
-                    placeholder="Kyrell Santillan"
-                    style={{ padding: '0.825rem 1.1rem', borderRadius: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '0.95rem', outline: 'none', transition: 'border-color 0.2s', fontFamily: 'inherit' }}
-                    onFocus={e => (e.target.style.borderColor = 'rgba(139,92,246,0.5)')}
-                    onBlur={e => (e.target.style.borderColor = 'var(--card-border)')}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Message</label>
-                  <textarea
-                    name="message" required rows={4}
-                    placeholder="Tell us what you&apos;re building or what you need..."
-                    style={{ padding: '0.825rem 1.1rem', borderRadius: '0.75rem', background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '0.95rem', outline: 'none', transition: 'border-color 0.2s', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.6, minHeight: '120px' }}
-                    onFocus={e => (e.target.style.borderColor = 'rgba(139,92,246,0.5)')}
-                    onBlur={e => (e.target.style.borderColor = 'var(--card-border)')}
-                  />
-                </div>
-                <motion.button type="submit"
-                  whileHover={{ scale: 1.02, boxShadow: '0 10px 36px rgba(139,92,246,0.45)' }}
-                  whileTap={{ scale: 0.97 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                  disabled={contactState === 'loading'}
-                  style={{
-                    marginTop: '0.5rem',
-                    padding: '0.925rem 2rem', borderRadius: '0.75rem',
-                    background: contactState === 'loading' ? 'var(--foreground-subtle)' : 'linear-gradient(135deg, var(--primary), var(--secondary))',
-                    color: 'white', fontWeight: 700, fontSize: '0.95rem',
-                    border: 'none', cursor: contactState === 'loading' ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                    boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
-                    transition: 'background 0.3s',
-                  }}>
-                  {contactState === 'loading' ? 'Sending...' : 'Send Inquiry →'}
-                </motion.button>
-              </form>
+              <motion.div 
+                className="glass hover-glow"
+                style={{ padding: '2.5rem 2rem', borderRadius: '1.25rem', textAlign: 'left', position: 'relative' }}
+              >
+                <form onSubmit={handleContact} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Your Name</label>
+                    <input
+                      type="text" name="name" required
+                      placeholder="Kyrell Santillan"
+                      style={{ padding: '1rem 1.25rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', fontFamily: 'inherit' }}
+                      onFocus={e => { e.target.style.borderColor = 'rgba(139,92,246,0.6)'; e.target.style.background = 'rgba(0,0,0,0.3)'; }}
+                      onBlur={e => { e.target.style.borderColor = 'var(--card-border)'; e.target.style.background = 'rgba(0,0,0,0.2)'; }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Message</label>
+                    <textarea
+                      name="message" required rows={4}
+                      placeholder="Tell us what you're building or what you need..."
+                      style={{ padding: '1rem 1.25rem', borderRadius: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--card-border)', color: 'var(--foreground)', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.6, minHeight: '120px' }}
+                      onFocus={e => { e.target.style.borderColor = 'rgba(139,92,246,0.6)'; e.target.style.background = 'rgba(0,0,0,0.3)'; }}
+                      onBlur={e => { e.target.style.borderColor = 'var(--card-border)'; e.target.style.background = 'rgba(0,0,0,0.2)'; }}
+                    />
+                  </div>
+                  <motion.button type="submit"
+                    whileHover={{ scale: 1.02, boxShadow: '0 10px 36px rgba(139,92,246,0.45)' }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                    disabled={contactState === 'loading'}
+                    style={{
+                      marginTop: '0.75rem',
+                      padding: '1.1rem 2rem', borderRadius: '0.75rem',
+                      background: contactState === 'loading' ? 'var(--foreground-subtle)' : 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                      color: 'white', fontWeight: 700, fontSize: '1rem',
+                      border: 'none', cursor: contactState === 'loading' ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                      boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
+                      transition: 'background 0.3s',
+                    }}>
+                    {contactState === 'loading' ? 'Sending...' : 'Send Inquiry →'}
+                  </motion.button>
+                </form>
+              </motion.div>
             )}
           </motion.div>
         </div>
@@ -545,7 +602,7 @@ export default function Home() {
       <footer style={{ padding: '0', borderTop: '1px solid var(--card-border)' }}>
         {/* Kyrell identity strip */}
         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', background: 'rgba(139,92,246,0.03)' }}>
-          <span style={{ fontSize: '0.72rem', color: 'var(--foreground-subtle)', letterSpacing: '0.04em' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--foreground-subtle)', letterSpacing: '0.04em', textAlign: 'center', lineHeight: 1.5 }}>
             Engineered by{' '}
             <a href="https://github.com/Hazy019" target="_blank" rel="noopener noreferrer"
               style={{ color: 'var(--primary)', fontWeight: 600, transition: 'opacity 0.2s' }}
@@ -553,7 +610,7 @@ export default function Home() {
               onMouseLeave={e => ((e.target as HTMLElement).style.opacity = '1')}
             >Kyrell Santillan</a>
             {' '}·{' '}
-            <span style={{ color: 'var(--foreground-muted)' }}>Available for senior engineering roles</span>
+            <span style={{ color: 'var(--foreground-muted)' }}>Aspiring Web Developer & Tech Generalist</span>
           </span>
         </div>
         {/* Main footer row */}
