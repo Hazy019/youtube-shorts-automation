@@ -159,20 +159,28 @@ def cleanup_s3_assets(keys):
 
 def produce_video(category, local_excludes=None, token_name='token_youtube.json'):
     print(f"\n--- STARTING PRODUCTION FOR CATEGORY: {category.upper()} (Token: {token_name}) ---")
+    local_recovery_file = f"temp_recovery_{category}.json"
 
     try:
+        import json
         # ── PRO MOVE: SELF-HEALING RECOVERY ──────────────────────────────────
-        # Check if we have a 'stuck' video in the database for this channel.
-        # This saves Gemini tokens and ensures 100% of generated content is used.
-        recovery_record = find_recovery_record(category)
-        
-        if recovery_record:
-            print(f"♻️  RECOVERY MODE: Resuming failed topic: {recovery_record['topic']}")
-            # We use the saved 'payload' JSON as our full_package
-            full_package = recovery_record['payload']
+        # Check local failsafe first to avoid burning Gemini tokens on DB failures
+        if os.path.exists(local_recovery_file):
+            print(f"♻️  LOCAL RECOVERY: Resuming interrupted job from {local_recovery_file}!")
+            with open(local_recovery_file, 'r', encoding='utf-8') as f:
+                full_package = json.load(f)
         else:
-            print(f"✨ FRESH RUN: Generating new {category} topic with Gemini...")
-            full_package = generate_full_package(category, local_excludes=local_excludes)
+            # Check if we have a 'stuck' video in the database for this channel.
+            recovery_record = find_recovery_record(category)
+            if recovery_record:
+                print(f"♻️  DB RECOVERY: Resuming failed topic: {recovery_record['topic']}")
+                full_package = recovery_record['payload']
+            else:
+                print(f"✨ FRESH RUN: Generating new {category} topic with Gemini...")
+                full_package = generate_full_package(category, local_excludes=local_excludes)
+                # Save to local failsafe immediately
+                with open(local_recovery_file, 'w', encoding='utf-8') as f:
+                    json.dump(full_package, f)
         
         topic = full_package['topic']
         search_keyword = full_package['search_keyword']
@@ -214,7 +222,11 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
         ping_error(err, "Local Google API")
         return None, None, False
 
-    render_seed = int(time.time())
+    # SMART CACHE HASHING: Ensures Remotion safely resumes identical renders
+    # without glitched/stale assets if the script changes.
+    import hashlib
+    script_hash_input = viral_package['topic'] + full_audio_script
+    render_seed = int(hashlib.md5(script_hash_input.encode('utf-8')).hexdigest()[:8], 16)
     ping_render_start(viral_package['title'], category=category)
     final_video_url, render_error = make_cloud_video(
         audio_url,
@@ -376,7 +388,9 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
 
         if os.path.exists(local_filename):
             os.remove(local_filename)
-        print(f"Local temp file deleted. {category.upper()} Syndication Cycle Complete!")
+        if os.path.exists(local_recovery_file):
+            os.remove(local_recovery_file)
+        print(f"Local temp files deleted. {category.upper()} Syndication Cycle Complete!")
         
         title = viral_package['title']
         was_queued = (tiktok_status == "QUEUED")

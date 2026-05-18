@@ -146,9 +146,8 @@ def make_cloud_video(
     if total_frames < 150:
         return None, f"Video too short: {total_frames} frames (min 150)"
 
-    # Increasing this to 450 reduces chunk count and avoids AWS "Rate Exceeded" concurrency limits.
-    # 450 frames (15s) is well within the 900s Lambda timeout.
-    frames_per_lambda = min(total_frames, 450)
+    # Lowering this to 300 to prevent AWS Lambda 15-minute timeouts.
+    frames_per_lambda = min(total_frames, 300)
     chunk_count = math.ceil(total_frames / frames_per_lambda)
     print(f"  Render plan: {total_frames} frames → {chunk_count} chunk(s) of {frames_per_lambda}f (Safety Chunking v13.5-ENFORCED)", flush=True)
 
