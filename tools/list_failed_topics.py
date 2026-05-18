@@ -24,7 +24,26 @@ def list_pending_videos():
             .order("created_at", desc=True)\
             .limit(10).execute()
 
-        if not response.data:
+        data = response.data or []
+        
+        # Check for string 'NULL' as well
+        response_str = supabase.table("videos").select("id, topic, title, created_at")\
+            .eq("youtube_id", "NULL")\
+            .order("created_at", desc=True)\
+            .limit(10).execute()
+            
+        if response_str.data:
+            data.extend(response_str.data)
+            # Deduplicate by ID and re-sort by created_at desc
+            seen = set()
+            deduped = []
+            for row in data:
+                if row['id'] not in seen:
+                    seen.add(row['id'])
+                    deduped.append(row)
+            data = sorted(deduped, key=lambda x: x['created_at'], reverse=True)[:10]
+
+        if not data:
             print("✨ No failed topics found! Everything seems to be published.")
             return
 

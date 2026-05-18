@@ -596,6 +596,13 @@ def get_background_videos(topic, keyword, backup_keywords=None, num_clips=3, max
     num_clips = min(num_clips, 10)
     topic_lower = topic.lower()
 
+    # PRO MOVE: Individual Clip Trimming Optimization
+    # Each background clip only plays for `total_duration / num_clips` (e.g. 42s / 10 = 4.2s).
+    # Trimming to this exact duration + 3s safety buffer significantly reduces download sizes,
+    # memory usage, and CPU load inside AWS Lambda, preventing Puppeteer hangs.
+    if max_duration:
+        max_duration = (max_duration / num_clips) + 3.0
+
     # Route 2: Primary Pexels keyword
     urls = _fetch_pexels(keyword, num_clips, max_duration=max_duration)
     if len(urls) >= num_clips:

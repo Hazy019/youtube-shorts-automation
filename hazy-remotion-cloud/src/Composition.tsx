@@ -1,5 +1,5 @@
 import {
-  AbsoluteFill, Audio, Video, Series, Sequence,
+  AbsoluteFill, Audio, OffthreadVideo, Series, Sequence,
   useVideoConfig, interpolate, useCurrentFrame, spring, random
 } from 'remotion';
 import React from 'react';
@@ -203,7 +203,7 @@ const ZoomingVideo: React.FC<{
     <AbsoluteFill style={{ transform: `scale(${scale}) translateX(${shakeX + driftX}px)`, opacity }}>
       {/* Background Dimmer — PRO MOVE: Ensures text readability without a harsh black box */}
       <AbsoluteFill style={{ backgroundColor: 'black', opacity: 0.15, zIndex: 1 }} />
-      <Video
+      <OffthreadVideo
         src={url}
         muted
         loop

@@ -106,6 +106,7 @@ def find_recovery_record(category):
         return None
 
     try:
+        # Check for both database NULL and the literal string 'NULL'
         query = supabase.table("videos").select("*").is_("youtube_id", "null")
 
         if has_category:
@@ -121,6 +122,21 @@ def find_recovery_record(category):
             .limit(1)
         )
         res = with_supabase_retry(query)
+
+        # Fallback check for the literal string 'NULL'
+        if not res.data:
+            fallback_query = supabase.table("videos").select("*").eq("youtube_id", "NULL")
+            if has_category:
+                fallback_query = fallback_query.eq("category", category)
+            fallback_query = (
+                fallback_query
+                .not_.is_("payload", "null")
+                .gt("created_at", limit)
+                .order("created_at", desc=True)
+                .limit(1)
+            )
+            res = with_supabase_retry(fallback_query)
+
         return res.data[0] if res.data else None
     except Exception as e:
         print(f"  [Recovery] Check failed (non-fatal): {e}")
