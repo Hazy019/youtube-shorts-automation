@@ -7,29 +7,32 @@ const syne = Syne({ subsets: ["latin"], variable: '--font-syne' });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://hazy-factory.vercel.app'),
-  title: "Hazy Content Factory — Autonomous AI Video Production at Scale",
-  description: "A fully automated, cloud-native video production system that researches, writes, voices, renders, and distributes short-form content 24/7 across YouTube, TikTok, and Meta — zero human intervention.",
-  keywords: ["AI video automation", "YouTube Shorts automation", "content factory", "serverless video production", "Gemini AI", "AWS Lambda Remotion"],
+  title: "Kyrell's Content Engine — Autonomous AI Video Production",
+  description: "A fully automated, cloud-native video production system by Kyrell Santillan that researches, writes, voices, renders, and distributes short-form content 24/7 across YouTube, TikTok, and Meta.",
+  keywords: ["Kyrell Santillan", "Kyrell", "AI video automation", "YouTube Shorts automation", "content engine", "serverless video production", "Gemini AI", "AWS Lambda Remotion"],
   authors: [{ name: "Kyrell Santillan" }],
   openGraph: {
-    title: "Hazy Content Factory — Autonomous AI Video Production",
-    description: "Cloud-native pipeline that produces and syndicates short-form video content 24/7. Built with Gemini, AWS Lambda, and React Remotion.",
+    title: "Kyrell's Content Engine — Autonomous AI Video Production",
+    description: "Cloud-native pipeline that produces and syndicates short-form video content 24/7. Built with Gemini, AWS Lambda, and React Remotion by Kyrell Santillan.",
     url: "https://hazy-factory.vercel.app",
-    siteName: "Hazy Content Factory",
-    images: [{ url: "/brand-image.png", width: 1200, height: 630, alt: "Hazy Content Factory" }],
+    siteName: "Kyrell's Content Engine",
+    images: [{ url: "/brand-image.png", width: 1200, height: 630, alt: "Kyrell's Content Engine" }],
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hazy Content Factory — Autonomous AI Video Production",
-    description: "A fully automated, serverless video machine. Zero local hardware. 24/7 production.",
+    title: "Kyrell's Content Engine — Autonomous AI Video Production",
+    description: "A fully automated, serverless video machine by Kyrell Santillan. Zero local hardware. 24/7 production.",
     images: ["/brand-image.png"],
   },
   icons: {
     icon: [{ url: '/favicon-circle.png', type: 'image/png', sizes: '128x128' }],
     shortcut: '/favicon-circle.png',
     apple: '/favicon-circle.png',
+  },
+  verification: {
+    google: "jurX14tSOTCPj1zMR21guSGjlv22Q17yRsd9fNjop5g",
   },
 };
 

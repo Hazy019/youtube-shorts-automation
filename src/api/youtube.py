@@ -199,8 +199,12 @@ def upload_video(video_path, title, description, category="general", tags=None, 
             print(f"Video Link: {video_link}")
             
             # Fix 7: Rotate engagement comment by category
-            engagement_text = _get_engagement_comment(category)
-            post_and_pin_comment(youtube, video_id, engagement_text)
+            # You CANNOT post comments on a private scheduled video via the API.
+            if not publish_at:
+                engagement_text = _get_engagement_comment(category)
+                post_and_pin_comment(youtube, video_id, engagement_text)
+            else:
+                print("Skipping comment posting: Video is scheduled (private) and cannot receive comments yet.")
             
             return video_link
         except googleapiclient.errors.HttpError as e:
