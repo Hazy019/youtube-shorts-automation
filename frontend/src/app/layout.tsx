@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const syne = Syne({ subsets: ["latin"], variable: '--font-syne' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://hazy-factory.vercel.app'),
+  metadataBase: new URL('https://hazyfactory.vercel.app'),
   title: "Kyrell's Content Engine — Autonomous AI Video Production",
   description: "A fully automated, cloud-native video production system by Kyrell Santillan that researches, writes, voices, renders, and distributes short-form content 24/7 across YouTube, TikTok, and Meta.",
   keywords: ["Kyrell Santillan", "Kyrell", "AI video automation", "YouTube Shorts automation", "content engine", "serverless video production", "Gemini AI", "AWS Lambda Remotion"],
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Kyrell's Content Engine — Autonomous AI Video Production",
     description: "Cloud-native pipeline that produces and syndicates short-form video content 24/7. Built with Gemini, AWS Lambda, and React Remotion by Kyrell Santillan.",
-    url: "https://hazy-factory.vercel.app",
+    url: "https://hazyfactory.vercel.app",
     siteName: "Kyrell's Content Engine",
     images: [{ url: "/brand-image.png", width: 1200, height: 630, alt: "Kyrell's Content Engine" }],
     locale: "en_US",
