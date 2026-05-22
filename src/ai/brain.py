@@ -94,12 +94,46 @@ def with_supabase_retry(operation, max_attempts=3):
 
 def clean_json_response(text):
     text = text.strip()
-    for prefix in ("```json", "```"):
-        if text.startswith(prefix):
-            text = text[len(prefix):]
-    if text.endswith("```"):
-        text = text[:-3]
-    return text.strip()
+    
+    # 1. Try regex extraction of markdown code blocks
+    # Look for ```json <content> ``` or ``` <content> ```
+    match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+    if not match:
+        match = re.search(r'```\s*(.*?)\s*```', text, re.DOTALL)
+        
+    if match:
+        cleaned = match.group(1).strip()
+        # Double check if this cleaned text is valid-looking JSON
+        if cleaned.startswith('{') and cleaned.endswith('}'):
+            return cleaned
+        if cleaned.startswith('[') and cleaned.endswith(']'):
+            return cleaned
+            
+    # 2. Fallback: Find the outermost curly braces or square brackets
+    start_obj = text.find('{')
+    end_obj = text.rfind('}')
+    
+    start_arr = text.find('[')
+    end_arr = text.rfind(']')
+    
+    # Determine whether we have a valid-looking object or array
+    has_obj = start_obj != -1 and end_obj != -1 and end_obj > start_obj
+    has_arr = start_arr != -1 and end_arr != -1 and end_arr > start_arr
+    
+    if has_obj and has_arr:
+        # If both are present, pick the outer one
+        if start_obj < start_arr:
+            return text[start_obj:end_obj + 1].strip()
+        else:
+            return text[start_arr:end_arr + 1].strip()
+    elif has_obj:
+        return text[start_obj:end_obj + 1].strip()
+    elif has_arr:
+        return text[start_arr:end_arr + 1].strip()
+        
+    # If no braces/brackets found, just return original stripped text
+    return text
+
 
 
 def validate_full_package(data):
