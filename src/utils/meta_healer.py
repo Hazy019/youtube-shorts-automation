@@ -1,9 +1,14 @@
 import os
+import sys
 import time
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from src.api.meta import MetaAPI
 from src.utils.discord import ping_error
+
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
 
 load_dotenv()
 
@@ -42,6 +47,8 @@ def perform_meta_recovery():
 
         meta = None # Lazy init
         healed_count = 0
+        ig_healed_count = 0
+        IG_MAX_PER_RUN = 3  # Meta's trust score degrades with bulk API publishing
 
         for row in res.data:
             topic = row.get("topic")
@@ -89,19 +96,26 @@ def perform_meta_recovery():
 
             # Instagram Recovery
             if needs_ig:
-                print(f"  → Retrying Instagram...")
-                try:
-                    ig_id = meta.upload_instagram_reel(s3_url, full_caption)
-                    if ig_id:
-                        supabase.table("videos").update({"instagram_status": "SUCCESS"}).eq("id", row["id"]).execute()
-                        print("    ✅ Instagram Healed!")
-                    else:
-                        print("    ❌ Instagram retry failed.")
-                except Exception as e:
-                    print(f"    💥 Instagram Exception: {e}")
+                if ig_healed_count >= IG_MAX_PER_RUN:
+                    print(f"  → Skipping Instagram (capped at {IG_MAX_PER_RUN}/run to avoid Meta rate limiting)")
+                else:
+                    print(f"  → Retrying Instagram...")
+                    try:
+                        ig_id = meta.upload_instagram_reel(s3_url, full_caption)
+                        if ig_id:
+                            supabase.table("videos").update({"instagram_status": "SUCCESS"}).eq("id", row["id"]).execute()
+                            print("    ✅ Instagram Healed!")
+                            ig_healed_count += 1
+                        else:
+                            print("    ❌ Instagram retry failed.")
+                    except Exception as e:
+                        print(f"    💥 Instagram Exception: {e}")
             
             healed_count += 1
-            time.sleep(2) # Breath between videos
+            # 60s cooldown between uploads — prevents Meta's bulk-publish rate limiter
+            if healed_count < len([r for r in res.data if r.get('facebook_status') in ['FAILED','PENDING','INITIALIZED'] or r.get('instagram_status') in ['FAILED','PENDING','INITIALIZED']]):
+                print("⏸  Cooling down 60s before next video...")
+                time.sleep(60)
 
         if healed_count == 0:
             print("✨ All recent Meta uploads are already SUCCESS. Great job!")

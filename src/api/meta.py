@@ -6,6 +6,13 @@ from src.utils.discord import ping_error
 
 load_dotenv()
 
+# A persistent session with a browser-like User-Agent avoids Meta's
+# bot-detection heuristics that silently kill API-sourced containers.
+_SESSION = requests.Session()
+_SESSION.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+})
+
 class MetaAPI:
     def __init__(self):
         # Brutally clean env parsing to prevent malformed URLs
@@ -118,7 +125,7 @@ class MetaAPI:
             "caption": caption,
             "access_token": self.access_token
         }
-        container_req = requests.post(container_url, data=container_payload)
+        container_req = _SESSION.post(container_url, data=container_payload)
         container_res = container_req.json()
         
         if "id" not in container_res:
@@ -128,11 +135,17 @@ class MetaAPI:
         creation_id = container_res["id"]
         print(f"[OK] IG Container Created: {creation_id}. Waiting for processing...")
 
-        # Step 2: Poll for status
-        max_retries = 30
+        # Step 2: Wait for Instagram to hydrate the container on their servers.
+        # Polling too fast after creation is the #1 cause of Ghost Container errors.
+        print("⏳ Warming up — waiting 30s for IG to register container...")
+        time.sleep(30)
+
+        # Step 3: Poll for status with exponential backoff on Ghost Container errors
+        max_retries = 24  # 24 polls with growing waits = up to ~8 minutes max
         status_url = f"{self.base_url}/{creation_id}"
+        ghost_count = 0
         for i in range(max_retries):
-            status_req = requests.get(status_url, params={"fields": "status_code", "access_token": self.access_token})
+            status_req = _SESSION.get(status_url, params={"fields": "status_code", "access_token": self.access_token})
             status_res = status_req.json()
             status = status_res.get("status_code")
             
@@ -142,11 +155,28 @@ class MetaAPI:
             elif status == "ERROR":
                 print(f"[FAIL] IG Processing Error: {status_res}")
                 return None
+            elif "error" in status_res:
+                err = status_res["error"]
+                if err.get("code") == 100 and err.get("error_subcode") == 33:
+                    ghost_count += 1
+                    # Exponential backoff: 15s, 20s, 25s ... capped at 45s
+                    backoff = min(15 + ghost_count * 5, 45)
+                    print(f"⏳ IG Container not yet visible (Ghost) — backing off {backoff}s... ({i+1}/{max_retries})")
+                    if ghost_count > 15:
+                        print(f"[FAIL] Container {creation_id} permanently rejected by Meta. Aborting to save tokens.")
+                        ping_error(f"IG Ghost Container after {ghost_count} attempts: {creation_id}", "Instagram Upload")
+                        return None
+                    time.sleep(backoff)
+                    continue
+                else:
+                    print(f"[FAIL] Unexpected IG API Error during polling: {err}")
+                    return None
+            else:
+                print(f"⏳ IG Status: {status}... ({i+1}/{max_retries})")
             
-            print(f"⏳ IG Status: {status}... ({i+1}/{max_retries})")
-            time.sleep(10)
+            time.sleep(15)
         else:
-            err = f"IG Status polling timed out after {max_retries * 10}s. Container ID: {creation_id}"
+            err = f"IG Status polling timed out. Container ID: {creation_id}"
             print(f"[FAIL] {err}")
             ping_error(err, "Instagram Upload")
             return None

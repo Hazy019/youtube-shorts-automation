@@ -79,7 +79,7 @@ def drain_tiktok_queue():
     try:
         resp = db.table("videos").select("Topic:topic, id, s3_video_url, tiktok_description")\
                 .eq("tiktok_status", "PENDING")\
-                .order("id", desc=True)\
+                .order("id", desc=False)\
                 .execute()
     except Exception as e:
         print(f"Supabase query failed: {e}")
