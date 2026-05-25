@@ -37,7 +37,7 @@ class MetaAPI:
         }
         print(f"DEBUG FB Init URL: {init_url}")
         
-        init_req = requests.post(init_url, data=init_payload)
+        init_req = _SESSION.post(init_url, data=init_payload)
         init_res = init_req.json()
         
         if "video_id" not in init_res:
@@ -78,7 +78,7 @@ class MetaAPI:
                 "file_size": str(len(video_data)),
                 "Content-Type": "application/octet-stream"
             }
-            upload_res = requests.post(upload_url, data=video_data, headers=headers)
+            upload_res = _SESSION.post(upload_url, data=video_data, headers=headers)
             upload_json = upload_res.json()
             
             if not upload_json.get("success"):
@@ -100,15 +100,29 @@ class MetaAPI:
             "video_state": "PUBLISHED",
             "access_token": self.access_token
         }
-        publish_req = requests.post(publish_url, data=publish_payload)
-        publish_res = publish_req.json()
         
-        if publish_res.get("success"):
-            print("🎉 Facebook Reel Published successfully!")
-            return video_id
-        else:
+        print("⏳ Waiting 15s for Facebook to process the uploaded video...")
+        time.sleep(15)
+        
+        for attempt in range(5):
+            publish_req = _SESSION.post(publish_url, data=publish_payload)
+            publish_res = publish_req.json()
+            
+            if publish_res.get("success"):
+                print("🎉 Facebook Reel Published successfully!")
+                return video_id
+                
+            err = publish_res.get("error", {})
+            if err.get("code") == 1:
+                print(f"⏳ FB processing incomplete (Code 1) — backing off 15s... (Attempt {attempt+1}/5)")
+                time.sleep(15)
+                continue
+                
             print(f"[FAIL] FB Publish Failed: {publish_res}")
             return None
+            
+        print("[FAIL] FB Publish timed out.")
+        return None
 
     def upload_instagram_reel(self, video_url, caption):
         """
@@ -187,7 +201,7 @@ class MetaAPI:
             "creation_id": creation_id,
             "access_token": self.access_token
         }
-        publish_req = requests.post(publish_url, data=publish_payload)
+        publish_req = _SESSION.post(publish_url, data=publish_payload)
         publish_res = publish_req.json()
         
         if "id" in publish_res:
