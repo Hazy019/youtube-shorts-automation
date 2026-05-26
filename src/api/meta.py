@@ -35,8 +35,6 @@ class MetaAPI:
             "upload_phase": "start",
             "access_token": self.access_token
         }
-        print(f"DEBUG FB Init URL: {init_url}")
-        
         init_req = _SESSION.post(init_url, data=init_payload)
         init_res = init_req.json()
         
@@ -90,8 +88,12 @@ class MetaAPI:
             return None
 
         # ---------------------------------------------------------
-        # Step 3: Publish
+        # Step 3: Publish (with retry on code 1 = still processing)
         # ---------------------------------------------------------
+        # NOTE: Facebook Reels use rupload.facebook.com which does NOT expose
+        # a 'ready' transition via GET /{video_id}?fields=status.
+        # The correct approach is to attempt upload_phase=finish immediately
+        # after binary upload and retry when code=1 (still processing).
         publish_url = f"{self.base_url}/{self.page_id}/video_reels"
         publish_payload = {
             "upload_phase": "finish",
@@ -101,10 +103,12 @@ class MetaAPI:
             "access_token": self.access_token
         }
         
-        print("⏳ Waiting 15s for Facebook to process the uploaded video...")
-        time.sleep(15)
+        # Wait an initial 20s for Facebook to begin processing
+        print("⏳ Waiting 20s for Facebook to begin processing...")
+        time.sleep(20)
         
-        for attempt in range(5):
+        max_publish_retries = 8  # 8 * 30s = 4 minutes max
+        for attempt in range(max_publish_retries):
             publish_req = _SESSION.post(publish_url, data=publish_payload)
             publish_res = publish_req.json()
             
@@ -113,15 +117,30 @@ class MetaAPI:
                 return video_id
                 
             err = publish_res.get("error", {})
-            if err.get("code") == 1:
-                print(f"⏳ FB processing incomplete (Code 1) — backing off 15s... (Attempt {attempt+1}/5)")
-                time.sleep(15)
+            err_code = err.get("code")
+            err_msg = err.get("message", "")
+            
+            # Robust check for video processing state.
+            # Meta can return various phrasings:
+            # - "Your video is still being processed. Please try again later."
+            # - "Your video is still processing."
+            # - Error code 1
+            is_processing = (
+                err_code == 1 or
+                "processing" in err_msg.lower() or
+                "processed" in err_msg.lower() or
+                "try again later" in err_msg.lower()
+            )
+            
+            if is_processing:
+                print(f"⏳ FB still processing (Code {err_code}: {err_msg}) — backing off 30s... (Attempt {attempt+1}/{max_publish_retries})")
+                time.sleep(30)
                 continue
                 
-            print(f"[FAIL] FB Publish Failed: {publish_res}")
+            print(f"[FAIL] FB Publish Failed (non-retryable): {publish_res}")
             return None
             
-        print("[FAIL] FB Publish timed out.")
+        print("[FAIL] FB Publish timed out after all retry attempts.")
         return None
 
     def upload_instagram_reel(self, video_url, caption):

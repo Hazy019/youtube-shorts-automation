@@ -3,6 +3,11 @@ import sys
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
+# Force console output to UTF-8 to prevent Windows CP1252 UnicodeEncodeError crashing the script
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 # Add parent dir to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

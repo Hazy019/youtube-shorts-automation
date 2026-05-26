@@ -70,10 +70,10 @@ def handle_youtube_ghosts(db: Client, before_id: int):
     print(f"✓ Processed {len(ghosts)} ghosts.")
 
 def cleanup_s3_storage(db: Client):
-    print("\nACTION: Cleaning up AWS S3 storage for all SUCCESSFUL TikTok uploads...")
+    print("\nACTION: Cleaning up AWS S3 storage for SUCCESSFUL and SKIPPED_LIMIT TikTok uploads...")
     
-    # Fetch all records with tiktok_status SUCCESS and a non-null s3_video_url
-    resp = db.table("videos").select("id, s3_video_url").eq("tiktok_status", "SUCCESS").not_.is_("s3_video_url", "null").execute()
+    # Fetch all records with tiktok_status SUCCESS or SKIPPED_LIMIT and a non-null s3_video_url
+    resp = db.table("videos").select("id, s3_video_url").in_("tiktok_status", ["SUCCESS", "SKIPPED_LIMIT"]).not_.is_("s3_video_url", "null").execute()
     data = resp.data
     
     if not data:
@@ -103,9 +103,37 @@ def cleanup_s3_storage(db: Client):
 
     print(f"\n✓ Successfully cleared {deleted_count} videos from AWS S3.")
 
+def auto_trim_queue(db: Client, keep_limit: int = 3):
+    print(f"\nACTION: Auto-trimming TikTok queue to keep only the newest {keep_limit} videos...")
+    
+    resp = db.table("videos")\
+        .select("id, topic")\
+        .eq("tiktok_status", "PENDING")\
+        .order("id", desc=True)\
+        .execute()
+        
+    pending_videos = resp.data
+    if len(pending_videos) <= keep_limit:
+        print(f"Queue is healthy ({len(pending_videos)} pending). No trimming needed.")
+        return
+        
+    doomed_videos = pending_videos[keep_limit:]
+    doomed_ids = [v['id'] for v in doomed_videos]
+    
+    print(f"Found {len(pending_videos)} pending videos. Keeping {keep_limit}, skipping {len(doomed_videos)}.")
+    
+    try:
+        db.table("videos")\
+            .update({"tiktok_status": "SKIPPED_LIMIT"})\
+            .in_("id", doomed_ids)\
+            .execute()
+        print(f"✓ Successfully marked {len(doomed_ids)} old videos as SKIPPED_LIMIT.")
+    except Exception as e:
+        print(f"❌ Failed to bulk update videos: {e}")
+
 def main():
     parser = argparse.ArgumentParser(description="HAZY Queue Management Utility")
-    parser.add_argument("command", choices=["report", "sync-tiktok", "clean-ghosts", "cleanup-s3", "full-maintenance"])
+    parser.add_argument("command", choices=["report", "sync-tiktok", "clean-ghosts", "cleanup-s3", "full-maintenance", "auto-trim"])
     parser.add_argument("--before", type=int, default=224, help="Target ID threshold (default: 224)")
     
     args = parser.parse_args()
@@ -134,10 +162,13 @@ def main():
         handle_youtube_ghosts(db, before_threshold)
     elif args.command == "cleanup-s3":
         cleanup_s3_storage(db)
+    elif args.command == "auto-trim":
+        auto_trim_queue(db, keep_limit=3)
     elif args.command == "full-maintenance":
         status_report(db)
         handle_youtube_ghosts(db, before_threshold)
         sync_tiktok_backlog(db, before_threshold)
+        auto_trim_queue(db, keep_limit=3)
         cleanup_s3_storage(db)
         print("\nMAINTENANCE COMPLETE.")
         status_report(db)
