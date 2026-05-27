@@ -14,7 +14,7 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       # fetch-depth: 1 = shallow clone (latest commit only, skips full git history)
@@ -113,3 +113,7 @@ jobs:
       # Main Factory
       - name: Run Factory
         run: python run_factory.py
+
+      # Autonomous Self-Healing for Meta API Failures
+      - name: Retry Failed Meta Posts
+        run: python tools/retry_meta.py
