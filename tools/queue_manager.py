@@ -1,5 +1,9 @@
 import sys
 import os
+
+# Force utf-8 encoding for stdout to prevent emoji printing errors on Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
@@ -133,7 +137,7 @@ def auto_trim_queue(db: Client, keep_limit: int = 3):
 
 def main():
     parser = argparse.ArgumentParser(description="HAZY Queue Management Utility")
-    parser.add_argument("command", choices=["report", "sync-tiktok", "clean-ghosts", "cleanup-s3", "full-maintenance", "auto-trim"])
+    parser.add_argument("command", nargs="?", default="report", choices=["report", "sync-tiktok", "clean-ghosts", "cleanup-s3", "full-maintenance", "auto-trim"])
     parser.add_argument("--before", type=int, default=224, help="Target ID threshold (default: 224)")
     
     args = parser.parse_args()

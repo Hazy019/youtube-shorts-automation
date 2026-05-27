@@ -60,7 +60,7 @@ def perform_meta_recovery():
             title = row.get("title", "Untitled Video")
             # We don't have the full description in the main row usually, 
             # but we can try to get it from payload or just use a generic one if missing.
-            payload = row.get("payload", {})
+            payload = row.get("payload") or {}
             description = payload.get("description", title)
             tags = payload.get("tags", [])
             hashtags = " ".join(f"#{t}" for t in tags) if tags else "#shorts #viral"
