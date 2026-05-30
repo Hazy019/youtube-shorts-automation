@@ -106,36 +106,32 @@ def find_recovery_record(category):
         return None
 
     try:
-        # Check for both database NULL and the literal string 'NULL'
-        query = supabase.table("videos").select("*").is_("youtube_id", "null")
-
-        if has_category:
-            query = query.eq("category", category)
-        else:
-            print("  [Recovery] 'category' column missing — recovery will not filter by channel.")
-
-        query = (
-            query
-            .not_.is_("payload", "null")
-            .gt("created_at", limit)
-            .order("created_at", desc=True)
-            .limit(1)
-        )
-        res = with_supabase_retry(query)
-
-        # Fallback check for the literal string 'NULL'
-        if not res.data:
-            fallback_query = supabase.table("videos").select("*").eq("youtube_id", "NULL")
+        def _build_base(match_val, use_eq=False):
+            """Build a recovery query for a specific youtube_id value."""
+            if use_eq:
+                q = supabase.table("videos").select("*").eq("youtube_id", match_val)
+            else:
+                q = supabase.table("videos").select("*").is_("youtube_id", match_val)
             if has_category:
-                fallback_query = fallback_query.eq("category", category)
-            fallback_query = (
-                fallback_query
+                q = q.eq("category", category)
+            else:
+                print("  [Recovery] 'category' column missing — recovery will not filter by channel.")
+            return (
+                q
                 .not_.is_("payload", "null")
                 .gt("created_at", limit)
                 .order("created_at", desc=True)
                 .limit(1)
             )
-            res = with_supabase_retry(fallback_query)
+
+        # Check all three 'no youtube_id' states:
+        #   1. SQL NULL          — row never updated after render
+        #   2. literal 'NULL'    — string written by old code path
+        #   3. empty string ''   — written by a failed YouTube upload
+        for args in [("null", False), ("NULL", True), ("", True)]:
+            res = with_supabase_retry(_build_base(*args))
+            if res.data:
+                break
 
         return res.data[0] if res.data else None
     except Exception as e:
@@ -404,8 +400,12 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
 
         if os.path.exists(local_filename):
             os.remove(local_filename)
-        if os.path.exists(local_recovery_file):
+        # Only delete the recovery file if the YouTube upload actually succeeded.
+        # If youtube_link is None, keep it so the next run can resume from it.
+        if youtube_link and os.path.exists(local_recovery_file):
             os.remove(local_recovery_file)
+        elif not youtube_link and os.path.exists(local_recovery_file):
+            print(f"  ⚠ YouTube upload failed — keeping {local_recovery_file} for next-run recovery.")
         print(f"Local temp files deleted. {category.upper()} Syndication Cycle Complete!")
         
         title = viral_package['title']
