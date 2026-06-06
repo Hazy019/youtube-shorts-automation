@@ -127,6 +127,7 @@ class MetaAPI:
             # - Error code 1
             is_processing = (
                 err_code == 1 or
+                err_code == 9007 or
                 "processing" in err_msg.lower() or
                 "processed" in err_msg.lower() or
                 "try again later" in err_msg.lower()

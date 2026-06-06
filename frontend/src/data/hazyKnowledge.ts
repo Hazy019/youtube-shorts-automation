@@ -1,5 +1,5 @@
 // ─── Hazy Factory Knowledge Base ─────────────────────────────────────────────
-// Single source of truth for Hazy AI. Update this file to keep the chatbot accurate.
+// Single source of truth for the Pipeline Assistant. Update this file to keep the chatbot accurate.
 // The buildKnowledgeContext() function converts this into clean prose injected
 // into every Gemini API call — no hallucinations, only verified facts.
 
@@ -147,7 +147,7 @@ export function buildKnowledgeContext(): string {
     .join('\n\n');
 
   return `
-=== HAZY FACTORY KNOWLEDGE BASE — USE THIS AS GROUND TRUTH FOR ALL ANSWERS ===
+=== KNOWLEDGE BASE — USE THIS AS GROUND TRUTH FOR ALL ANSWERS ===
 
 SYSTEM OVERVIEW:
   Name: ${kb.system.name}

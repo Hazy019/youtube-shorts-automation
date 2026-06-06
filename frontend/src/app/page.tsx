@@ -3,12 +3,25 @@
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
 import ChatBot from '@/components/ChatBot';
+import dynamic from 'next/dynamic';
 
-const ANIM_BLUR_UP = { initial: { opacity: 0, y: 50, filter: 'blur(10px)' }, whileInView: { opacity: 1, y: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 1.1, ease: [0.16, 1, 0.3, 1] } };
+const Core3D = dynamic(() => import('@/components/Core3D'), { ssr: false });
+
+// ─── Unique per-section animation presets ────────────────────────────────────
+// ABOUT — horizontal clip + blur from left
 const ANIM_SLIDE_LEFT = { initial: { opacity: 0, x: -60, filter: 'blur(12px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } };
 const ANIM_SLIDE_RIGHT = { initial: { opacity: 0, x: 60, filter: 'blur(12px)' }, whileInView: { opacity: 1, x: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } };
-const ANIM_SCALE_IN = { initial: { opacity: 0, scale: 0.9, filter: 'blur(10px)' }, whileInView: { opacity: 1, scale: 1, filter: 'blur(0px)' }, viewport: { once: true, margin: "-100px" }, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } };
+// INTEGRITY — pop-up scale from below with bounce
+const ANIM_POP_UP = { initial: { opacity: 0, y: 40, scale: 0.88 }, whileInView: { opacity: 1, y: 0, scale: 1 }, viewport: { once: true, margin: "-100px" }, transition: { duration: 0.7, type: 'spring', stiffness: 260, damping: 22 } };
+// RESULTS — 3D perspective tilt rise
 const ANIM_RISE = { initial: { opacity: 0, y: 100, rotateX: 15, filter: 'blur(8px)' }, whileInView: { opacity: 1, y: 0, rotateX: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-50px" }, transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] } };
+// PIPELINE — flip-up from bottom with slight Z rotation
+const ANIM_FLIP_UP = { initial: { opacity: 0, y: 60, rotateZ: -2, filter: 'blur(6px)' }, whileInView: { opacity: 1, y: 0, rotateZ: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-60px" }, transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } };
+// METRICS — zoom-through (scale from large)
+const ANIM_ZOOM_THROUGH = { initial: { opacity: 0, scale: 1.25, filter: 'blur(20px)' }, whileInView: { opacity: 1, scale: 1, filter: 'blur(0px)' }, viewport: { once: true, margin: "-80px" }, transition: { duration: 1.1, ease: [0.16, 1, 0.3, 1] } };
+// CONTACT — curtain drop from top
+const ANIM_DROP = { initial: { opacity: 0, y: -40, filter: 'blur(10px)' }, whileInView: { opacity: 1, y: 0, filter: 'blur(0px)' }, viewport: { once: true, margin: "-80px" }, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } };
+// STAGGER parent wrapper
 const STAGGER_PARENT = { initial: { opacity: 0 }, whileInView: { opacity: 1 }, viewport: { once: true, margin: "-100px" }, transition: { staggerChildren: 0.12, delayChildren: 0.2 } };
 
 // Split text animation variant for premium typography reveals
@@ -135,9 +148,27 @@ export default function Home() {
         className="pill-nav"
         style={{
           position: 'fixed', top: '1.5rem', left: '50%', zIndex: 50,
-          padding: '0.65rem 1.25rem', width: '92%', maxWidth: '980px',
-          opacity: isScrolled ? 0.88 : 1, transition: 'opacity 0.3s ease',
+          padding: isScrolled ? '0.75rem 1.5rem' : '0.8rem 1.5rem', 
+          width: '92%', 
+          maxWidth: '980px',
+          opacity: 1, backdropFilter: 'blur(20px)',
+          background: 'var(--nav-bg)',
+          transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          border: isScrolled ? '1px solid rgba(139, 92, 246, 0.15)' : '1px solid var(--card-border)',
+          boxShadow: isScrolled ? '0 10px 40px -10px rgba(0,0,0,0.5)' : 'none',
         }}
+        onMouseEnter={(e) => {
+          if (isScrolled) {
+            e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (isScrolled) {
+            e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.15)';
+          }
+        }}
+
       >
         {/* Logo */}
         <div className="display-font" style={{ color: 'var(--foreground)', fontSize: '1.1rem', letterSpacing: '-0.02em', fontWeight: 900, flexShrink: 0 }}>HAZY.</div>
@@ -260,6 +291,7 @@ export default function Home() {
 
       {/* ─── HERO ─── */}
       <section style={{ position: 'relative', height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+        <Core3D />
         <motion.div style={{ y: glowYLeft, position: 'absolute', top: '15%', left: '10%', width: '500px', height: '500px', backgroundColor: 'rgba(147,51,234,0.18)', borderRadius: '50%', filter: 'blur(120px)', pointerEvents: 'none' }} />
         <motion.div style={{ y: glowYRight, position: 'absolute', bottom: '15%', right: '10%', width: '600px', height: '600px', backgroundColor: 'rgba(217,70,239,0.15)', borderRadius: '50%', filter: 'blur(140px)', pointerEvents: 'none' }} />
 
@@ -273,13 +305,22 @@ export default function Home() {
             Cloud-Native Autonomous Media
           </motion.div>
           <motion.h1
-            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            transition={{ duration: 1.3, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, scale: 0.9, filter: 'blur(20px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            transition={{ duration: 1.4, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="display-font hero-title"
-            style={{ fontSize: 'clamp(3rem, 13vw, 10rem)', lineHeight: 0.88, color: 'var(--foreground)', letterSpacing: '-0.05em', margin: 0 }}
+            style={{ lineHeight: 0.88, color: 'var(--foreground)', letterSpacing: '-0.05em', margin: 0 }}
           >
-            WE BUILD<br /><span className="text-gradient-primary">MACHINES.</span>
+            <span className="stack-mobile">WE</span> <span className="stack-mobile">BUILD</span><br className="hide-mobile" />
+            <motion.span 
+              initial={{ backgroundPosition: '200% 50%' }}
+              animate={{ backgroundPosition: '-200% 50%' }}
+              transition={{ repeat: Infinity, duration: 6, ease: 'linear' }}
+              className="text-gradient-primary"
+              style={{ backgroundSize: '200% auto' }}
+            >
+              MACHINES.
+            </motion.span>
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
             style={{ marginTop: '2.5rem', color: 'var(--foreground-muted)', maxWidth: '34rem', margin: '2.5rem auto 0', fontSize: 'clamp(1rem,2.5vw,1.2rem)', fontWeight: 300, lineHeight: 1.7 }}>
@@ -350,8 +391,8 @@ export default function Home() {
           <div className="pipeline-grid">
             {INTEGRITY_CARDS.map((card, i) => (
               <motion.div key={i}
-                {...ANIM_SCALE_IN}
-                transition={{ ...ANIM_SCALE_IN.transition, delay: i * 0.1 }}
+                {...ANIM_POP_UP}
+                transition={{ ...ANIM_POP_UP.transition, delay: i * 0.12 }}
                 className="glass hover-glow group" style={{ padding: '2.5rem 2rem', borderRadius: '1.25rem' }}>
                 <div className="display-font text-gradient-primary" style={{ fontSize: '3.5rem', lineHeight: 1, marginBottom: '0.75rem' }}>{card.stat}</div>
                 <h3 style={{ fontSize: '1.15rem', color: 'var(--foreground)', marginBottom: '0.5rem', fontWeight: 600 }}>{card.label}</h3>
@@ -370,8 +411,8 @@ export default function Home() {
         <div style={{ position: 'absolute', top: '30%', left: '50%', transform: 'translateX(-50%)', width: '60vw', height: '300px', background: 'rgba(139,92,246,0.06)', filter: 'blur(100px)', borderRadius: '50%', pointerEvents: 'none' }} />
         <div style={{ maxWidth: '1300px', margin: '0 auto', padding: '0 1.5rem', position: 'relative', zIndex: 1 }}>
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
             style={{ textAlign: 'center', marginBottom: '5rem' }}
@@ -461,8 +502,8 @@ export default function Home() {
 
           {/* Channel link */}
           <motion.div
-            {...ANIM_BLUR_UP}
-            transition={{ ...ANIM_BLUR_UP.transition, delay: 0.4 }}
+            {...ANIM_DROP}
+            transition={{ ...ANIM_DROP.transition, delay: 0.4 }}
             style={{ textAlign: 'center', marginTop: '3rem' }}
           >
             <a
@@ -495,8 +536,8 @@ export default function Home() {
           <div className="pipeline-grid">
             {PIPELINE_STEPS.map((step, i) => (
               <motion.div key={i}
-                {...ANIM_RISE}
-                transition={{ ...ANIM_RISE.transition, delay: i * 0.1 }}
+                {...ANIM_FLIP_UP}
+                transition={{ ...ANIM_FLIP_UP.transition, delay: i * 0.08 }}
                 whileHover={{ y: -6, transition: { duration: 0.3 } }}
                 className="glass group hover-glow"
                 style={{ padding: '2rem 1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--background)', position: 'relative', cursor: 'default' }}>
@@ -519,8 +560,8 @@ export default function Home() {
             { value: '0', accent: '.', suffix: '0', label: 'Local Hardware Required', color: 'var(--secondary)' },
           ].map((m, i) => (
             <motion.div key={i}
-              {...ANIM_RISE}
-              transition={{ ...ANIM_RISE.transition, delay: i * 0.2 }}
+              {...ANIM_ZOOM_THROUGH}
+              transition={{ ...ANIM_ZOOM_THROUGH.transition, delay: i * 0.18 }}
               style={{ transformPerspective: 800 }}
             >
               <div className="display-font" style={{ fontSize: 'clamp(4rem,10vw,7.5rem)', color: 'var(--foreground)', letterSpacing: '-0.05em' }}>
@@ -580,7 +621,7 @@ export default function Home() {
             </motion.div>
 
             {/* ── RIGHT — Form Panel ── */}
-            <motion.div {...ANIM_SLIDE_RIGHT}>
+            <motion.div {...ANIM_DROP}>
               {contactState === 'done' ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
