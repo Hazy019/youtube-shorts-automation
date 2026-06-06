@@ -354,17 +354,22 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
             meta_description = f"{viral_package['title']}\n\n{viral_package['description'][:1400]}\n\n{hashtags}"[:2200]
 
             # Facebook
-            try:
-                fb_id = meta.upload_facebook_reel(final_video_url, meta_description)
-                if fb_id:
-                    fb_status = "SUCCESS"
-                    with_supabase_retry(supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("topic", full_package['topic']))
-                else:
+            if os.getenv("GITHUB_ACTIONS") == "true":
+                print("  → Skipping Facebook upload in GitHub Actions (Meta blocks datacenter IPs for binary uploads). Run retry_meta.py locally.")
+                fb_status = "PENDING"
+                with_supabase_retry(supabase.table("videos").update({"facebook_status": "PENDING"}).eq("topic", full_package['topic']))
+            else:
+                try:
+                    fb_id = meta.upload_facebook_reel(final_video_url, meta_description)
+                    if fb_id:
+                        fb_status = "SUCCESS"
+                        with_supabase_retry(supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("topic", full_package['topic']))
+                    else:
+                        fb_status = "FAILED"
+                        with_supabase_retry(supabase.table("videos").update({"facebook_status": "FAILED"}).eq("topic", full_package['topic']))
+                except Exception as e:
+                    print(f"  ⚠ Facebook Direct Upload Failed: {e}")
                     fb_status = "FAILED"
-                    with_supabase_retry(supabase.table("videos").update({"facebook_status": "FAILED"}).eq("topic", full_package['topic']))
-            except Exception as e:
-                print(f"  ⚠ Facebook Direct Upload Failed: {e}")
-                fb_status = "FAILED"
 
             # Instagram
             try:

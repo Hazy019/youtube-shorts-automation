@@ -113,7 +113,3 @@ jobs:
       # Main Factory
       - name: Run Factory
         run: python run_factory.py
-
-      # Autonomous Self-Healing for Meta API Failures
-      - name: Retry Failed Meta Posts
-        run: python tools/retry_meta.py
