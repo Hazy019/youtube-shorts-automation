@@ -4,7 +4,7 @@ import time
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from src.api.meta import MetaAPI
-from src.utils.discord import ping_error
+from src.utils.discord import ping_error, ping_meta_success
 
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
@@ -89,6 +89,7 @@ def perform_meta_recovery():
                     if fb_id:
                         supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("id", row["id"]).execute()
                         print("    ✅ Facebook Healed!")
+                        ping_meta_success(title, platform="Facebook")
                     else:
                         print("    ❌ Facebook retry failed.")
                 except Exception as e:
@@ -105,6 +106,7 @@ def perform_meta_recovery():
                         if ig_id:
                             supabase.table("videos").update({"instagram_status": "SUCCESS"}).eq("id", row["id"]).execute()
                             print("    ✅ Instagram Healed!")
+                            ping_meta_success(title, platform="Instagram")
                             ig_healed_count += 1
                         else:
                             print("    ❌ Instagram retry failed.")

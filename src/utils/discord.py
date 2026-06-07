@@ -197,7 +197,7 @@ def ping_meta_success(topic, platform="Meta"):
         "description": f"**Topic:** `{topic}`\n\n*Available now on {platform}!*",
         "color": 0x3498DB # Blue
     }
-    _post(URL_QUEUE, embed=embed)
+    _post(URL_POSTS, embed=embed)
 
 
 def ping_queue_completed(total_uploaded):
