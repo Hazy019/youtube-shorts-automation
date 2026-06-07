@@ -354,22 +354,17 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
             meta_description = f"{viral_package['title']}\n\n{viral_package['description'][:1400]}\n\n{hashtags}"[:2200]
 
             # Facebook
-            if os.getenv("GITHUB_ACTIONS") == "true":
-                print("  → Skipping Facebook upload in GitHub Actions (Meta blocks datacenter IPs for binary uploads). Run retry_meta.py locally.")
-                fb_status = "PENDING"
-                with_supabase_retry(supabase.table("videos").update({"facebook_status": "PENDING"}).eq("topic", full_package['topic']))
-            else:
-                try:
-                    fb_id = meta.upload_facebook_reel(final_video_url, meta_description)
-                    if fb_id:
-                        fb_status = "SUCCESS"
-                        with_supabase_retry(supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("topic", full_package['topic']))
-                    else:
-                        fb_status = "FAILED"
-                        with_supabase_retry(supabase.table("videos").update({"facebook_status": "FAILED"}).eq("topic", full_package['topic']))
-                except Exception as e:
-                    print(f"  ⚠ Facebook Direct Upload Failed: {e}")
+            try:
+                fb_id = meta.upload_facebook_reel(final_video_url, meta_description)
+                if fb_id:
+                    fb_status = "SUCCESS"
+                    with_supabase_retry(supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("topic", full_package['topic']))
+                else:
                     fb_status = "FAILED"
+                    with_supabase_retry(supabase.table("videos").update({"facebook_status": "FAILED"}).eq("topic", full_package['topic']))
+            except Exception as e:
+                print(f"  ⚠ Facebook Direct Upload Failed: {e}")
+                fb_status = "FAILED"
 
             # Instagram
             try:
@@ -429,13 +424,6 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
 def start_factory():
     print("HAZY MULTI-CHANNEL FACTORY STARTING (PARALLEL v14)...\n" + "="*40)
     
-    # --- PHASE 0: AUTONOMOUS SELF-HEALING ------------------------------------
-    # Automatically fix any failed Meta uploads from previous runs
-    try:
-        perform_meta_recovery()
-    except Exception as e:
-        print(f"⚠️ Self-Healing Phase Warning: {e}")
-    # -------------------------------------------------------------------------
     
     # Define channel configurations — 2 accounts, 2 videos per run
     channels = [

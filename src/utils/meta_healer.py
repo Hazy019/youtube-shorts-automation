@@ -38,7 +38,7 @@ def perform_meta_recovery():
         res = supabase.table("videos").select("*")\
             .not_.is_("s3_video_url", "null")\
             .order("created_at", desc=True)\
-            .limit(10)\
+            .limit(2)\
             .execute()
 
         if not res.data:
@@ -83,19 +83,16 @@ def perform_meta_recovery():
 
             # Facebook Recovery
             if needs_fb:
-                if os.getenv("GITHUB_ACTIONS") == "true":
-                    print("  → Skipping Facebook recovery in GitHub Actions (IP blocked).")
-                else:
-                    print(f"  → Retrying Facebook...")
-                    try:
-                        fb_id = meta.upload_facebook_reel(s3_url, full_caption)
-                        if fb_id:
-                            supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("id", row["id"]).execute()
-                            print("    ✅ Facebook Healed!")
-                        else:
-                            print("    ❌ Facebook retry failed.")
-                    except Exception as e:
-                        print(f"    💥 Facebook Exception: {e}")
+                print(f"  → Retrying Facebook...")
+                try:
+                    fb_id = meta.upload_facebook_reel(s3_url, full_caption)
+                    if fb_id:
+                        supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("id", row["id"]).execute()
+                        print("    ✅ Facebook Healed!")
+                    else:
+                        print("    ❌ Facebook retry failed.")
+                except Exception as e:
+                    print(f"    💥 Facebook Exception: {e}")
 
             # Instagram Recovery
             if needs_ig:
