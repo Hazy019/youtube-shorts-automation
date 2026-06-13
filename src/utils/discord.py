@@ -210,3 +210,18 @@ def ping_queue_completed(total_uploaded):
         "color": 0x9B59B6 # Purple/Celebratory
     }
     _post(URL_QUEUE, embed=embed)
+
+def ping_recovery_completed(healed_count, failed_count):
+    """Notify when a meta recovery cycle is complete."""
+    print(f"Sending recovery completion notification (Healed: {healed_count}, Failed: {failed_count})")
+    
+    color = 0x2ECC71 if failed_count == 0 else 0xF1C40F
+    if healed_count == 0 and failed_count > 0:
+        color = 0xE74C3C
+        
+    embed = {
+        "title": "⚕️ Meta Recovery Cycle Complete",
+        "description": f"**Healed:** `{healed_count}` videos\n**Failed:** `{failed_count}` videos",
+        "color": color
+    }
+    _post(URL_POSTS, embed=embed)

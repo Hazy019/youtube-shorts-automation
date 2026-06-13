@@ -4,7 +4,7 @@ import time
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from src.api.meta import MetaAPI
-from src.utils.discord import ping_error, ping_meta_success
+from src.utils.discord import ping_error, ping_meta_success, ping_recovery_completed
 
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
@@ -46,9 +46,11 @@ def perform_meta_recovery():
             return
 
         meta = None # Lazy init
-        healed_count = 0
+        processed_count = 0
+        success_count = 0
+        failed_count = 0
         ig_healed_count = 0
-        IG_MAX_PER_RUN = 3  # Meta's trust score degrades with bulk API publishing
+        IG_MAX_PER_RUN = 2  # Limits to 2 per run as requested
 
         for row in res.data:
             topic = row.get("topic")
@@ -90,10 +92,15 @@ def perform_meta_recovery():
                         supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("id", row["id"]).execute()
                         print("    ✅ Facebook Healed!")
                         ping_meta_success(title, platform="Facebook")
+                        success_count += 1
                     else:
                         print("    ❌ Facebook retry failed.")
+                        ping_error(f"Facebook retry failed for {title}", "Meta-Recovery")
+                        failed_count += 1
                 except Exception as e:
                     print(f"    💥 Facebook Exception: {e}")
+                    ping_error(f"Facebook Exception for {title}: {e}", "Meta-Recovery")
+                    failed_count += 1
 
             # Instagram Recovery
             if needs_ig:
@@ -107,26 +114,36 @@ def perform_meta_recovery():
                             supabase.table("videos").update({"instagram_status": "SUCCESS"}).eq("id", row["id"]).execute()
                             print("    ✅ Instagram Healed!")
                             ping_meta_success(title, platform="Instagram")
+                            success_count += 1
                             ig_healed_count += 1
                         else:
                             print("    ❌ Instagram retry failed.")
+                            ping_error(f"Instagram retry failed for {title}", "Meta-Recovery")
+                            failed_count += 1
                     except Exception as e:
                         print(f"    💥 Instagram Exception: {e}")
+                        ping_error(f"Instagram Exception for {title}: {e}", "Meta-Recovery")
+                        failed_count += 1
             
-            healed_count += 1
+            processed_count += 1
             # 60s cooldown between uploads — prevents Meta's bulk-publish rate limiter
-            if healed_count < len([r for r in res.data if r.get('facebook_status') in ['FAILED','PENDING','INITIALIZED'] or r.get('instagram_status') in ['FAILED','PENDING','INITIALIZED']]):
+            if processed_count < len([r for r in res.data if r.get('facebook_status') in ['FAILED','PENDING','INITIALIZED'] or r.get('instagram_status') in ['FAILED','PENDING','INITIALIZED']]):
                 print("⏸  Cooling down 60s before next video...")
                 time.sleep(60)
 
-        if healed_count == 0:
+        if processed_count == 0:
             print("✨ All recent Meta uploads are already SUCCESS. Great job!")
         else:
-            print(f"🏁 Meta Healing Cycle Complete. Processed {healed_count} video(s).")
+            print(f"🏁 Meta Healing Cycle Complete. Processed {processed_count} video(s).")
+            ping_recovery_completed(success_count, failed_count)
+            if failed_count > 0:
+                print("⚠️ Exiting with error code due to failed recoveries.")
+                sys.exit(1)
 
     except Exception as e:
         print(f"💥 Meta Healer Critical Error: {e}")
         ping_error(f"Meta Healer crashed: {e}", "Self-Healing")
+        sys.exit(1)
 
 if __name__ == "__main__":
     perform_meta_recovery()

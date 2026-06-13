@@ -76,8 +76,9 @@ def handle_youtube_ghosts(db: Client, before_id: int):
 def cleanup_s3_storage(db: Client):
     print("\nACTION: Cleaning up AWS S3 storage for SUCCESSFUL and SKIPPED_LIMIT TikTok uploads...")
     
-    # Fetch all records with tiktok_status SUCCESS or SKIPPED_LIMIT and a non-null s3_video_url
-    resp = db.table("videos").select("id, s3_video_url").in_("tiktok_status", ["SUCCESS", "SKIPPED_LIMIT"]).not_.is_("s3_video_url", "null").execute()
+    # Fetch records with tiktok_status SUCCESS or SKIPPED_LIMIT and a non-null s3_video_url
+    # We also need to check facebook and instagram statuses to avoid deleting assets they still need.
+    resp = db.table("videos").select("id, s3_video_url, tiktok_status, facebook_status, instagram_status").in_("tiktok_status", ["SUCCESS", "SKIPPED_LIMIT"]).not_.is_("s3_video_url", "null").execute()
     data = resp.data
     
     if not data:
@@ -91,6 +92,15 @@ def cleanup_s3_storage(db: Client):
     deleted_count = 0
     
     for item in data:
+        # Check if Meta platforms are also done (SUCCESS or SKIPPED_LIMIT or ABANDONED)
+        fb = item.get("facebook_status")
+        ig = item.get("instagram_status")
+        safe_statuses = ["SUCCESS", "SKIPPED_LIMIT", "ABANDONED"]
+        
+        if fb not in safe_statuses or ig not in safe_statuses:
+            print(f"  Skipping ID {item['id']}: Meta syndication pending (FB: {fb}, IG: {ig})")
+            continue
+
         url = item.get("s3_video_url")
         # Extract key
         try:
@@ -131,9 +141,50 @@ def auto_trim_queue(db: Client, keep_limit: int = 3):
             .update({"tiktok_status": "SKIPPED_LIMIT"})\
             .in_("id", doomed_ids)\
             .execute()
-        print(f"✓ Successfully marked {len(doomed_ids)} old videos as SKIPPED_LIMIT.")
+        print(f"✓ Successfully marked {len(doomed_ids)} old TikTok videos as SKIPPED_LIMIT.")
     except Exception as e:
-        print(f"❌ Failed to bulk update videos: {e}")
+        print(f"❌ Failed to bulk update TikTok videos: {e}")
+
+def auto_trim_meta_queue(db: Client, keep_limit: int = 4):
+    print(f"\nACTION: Auto-trimming Meta queue to keep only the newest {keep_limit} videos...")
+    
+    # Since PostgREST Python client 'or_' filter syntax can be tricky, 
+    # we fetch all records that are not SUCCESS or SKIPPED_LIMIT or ABANDONED
+    resp = db.table("videos")\
+        .select("id, topic, facebook_status, instagram_status")\
+        .order("id", desc=True)\
+        .execute()
+        
+    pending_videos = []
+    for r in resp.data:
+        fb = r.get("facebook_status")
+        ig = r.get("instagram_status")
+        if fb in ["PENDING", "FAILED", "INITIALIZED"] or ig in ["PENDING", "FAILED", "INITIALIZED"]:
+            pending_videos.append(r)
+            
+    if len(pending_videos) <= keep_limit:
+        print(f"Meta Queue is healthy ({len(pending_videos)} pending/failed). No trimming needed.")
+        return
+        
+    doomed_videos = pending_videos[keep_limit:]
+    
+    print(f"Found {len(pending_videos)} pending/failed Meta videos. Keeping {keep_limit}, skipping {len(doomed_videos)}.")
+    
+    try:
+        updated = 0
+        for video in doomed_videos:
+            update_data = {}
+            if video.get("facebook_status") in ["PENDING", "FAILED", "INITIALIZED"]:
+                update_data["facebook_status"] = "SKIPPED_LIMIT"
+            if video.get("instagram_status") in ["PENDING", "FAILED", "INITIALIZED"]:
+                update_data["instagram_status"] = "SKIPPED_LIMIT"
+                
+            if update_data:
+                db.table("videos").update(update_data).eq("id", video["id"]).execute()
+                updated += 1
+        print(f"✓ Successfully marked {updated} old Meta videos as SKIPPED_LIMIT.")
+    except Exception as e:
+        print(f"❌ Failed to update Meta videos: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="HAZY Queue Management Utility")
@@ -168,11 +219,13 @@ def main():
         cleanup_s3_storage(db)
     elif args.command == "auto-trim":
         auto_trim_queue(db, keep_limit=3)
+        auto_trim_meta_queue(db, keep_limit=4)
     elif args.command == "full-maintenance":
         status_report(db)
         handle_youtube_ghosts(db, before_threshold)
         sync_tiktok_backlog(db, before_threshold)
         auto_trim_queue(db, keep_limit=3)
+        auto_trim_meta_queue(db, keep_limit=4)
         cleanup_s3_storage(db)
         print("\nMAINTENANCE COMPLETE.")
         status_report(db)
