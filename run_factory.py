@@ -5,6 +5,8 @@ import requests
 import random
 import traceback
 import boto3
+import subprocess
+import re
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
@@ -51,10 +53,39 @@ def check_environment():
     print(f"Validating Remotion Site: {serve_url}")
     try:
         r = requests.head(serve_url, timeout=10)
-        if r.status_code == 403:
-            print(f"WARNING: Remotion SERVE_URL returned 403 Forbidden.")
-            print("ACTION: Your Remotion bundle is either not deployed or S3 permissions block public access.")
-            print("Continuing anyway, as Lambda might still have access internally.")
+        if r.status_code in [403, 404]:
+            print(f"WARNING: Remotion SERVE_URL returned {r.status_code}. Site is likely missing.")
+            print("AUTO-HEALING: Triggering Remotion site deployment...")
+            try:
+                print("  -> Installing Node dependencies...")
+                subprocess.run(
+                    ["npm", "install"],
+                    cwd="hazy-remotion-cloud",
+                    shell=True if sys.platform == "win32" else False,
+                    check=True,
+                    stdout=subprocess.DEVNULL
+                )
+                print("  -> Deploying site...")
+                result = subprocess.run(
+                    ["npx", "remotion", "lambda", "sites", "create", "src/index.ts", "--site-name=hazy-v14"],
+                    cwd="hazy-remotion-cloud",
+                    shell=True if sys.platform == "win32" else False,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                print("AUTO-HEALING SUCCESS: Remotion site redeployed.")
+                
+                # Try to parse the new URL from the output just in case
+                match = re.search(r"Serve URL\s+(https://\S+)", result.stdout)
+                if match:
+                    new_url = match.group(1)
+                    os.environ["SERVE_URL"] = new_url
+                    print(f"Updated SERVE_URL to: {new_url}")
+            except subprocess.CalledProcessError as e:
+                err_out = getattr(e, "stderr", str(e))
+                print(f"FATAL: Auto-healing failed. Remotion deployment error:\n{err_out}")
+                sys.exit(1)
         elif r.status_code >= 400:
             print(f"WARNING: Remotion SERVE_URL returned status {r.status_code}. Continuing anyway.")
     except Exception as e:
