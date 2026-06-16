@@ -34,6 +34,9 @@ jobs:
           echo "META_PAGE_ACCESS_TOKEN=${{ secrets.META_PAGE_ACCESS_TOKEN }}" >> .env
           echo "META_PAGE_ID=${{ secrets.META_PAGE_ID }}"                 >> .env
           echo "META_INSTAGRAM_ID=${{ secrets.META_INSTAGRAM_ID }}"       >> .env
+          echo "WEBHOOK_ERRORS=${{ secrets.WEBHOOK_ERRORS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
+          echo "WEBHOOK_POSTS=${{ secrets.WEBHOOK_POSTS || secrets.DISCORD_WEBHOOK_URL }}" >> .env
+          echo "DISCORD_PING_USER_ID=${{ secrets.DISCORD_PING_USER_ID }}" >> .env
           echo "GITHUB_ACTIONS=true"                                       >> .env
 
       - name: Install Python Requirements

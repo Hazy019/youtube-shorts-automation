@@ -169,3 +169,322 @@ python run_factory.py
 
 ---
 *Maintained by Hazy. Engineered for absolute scale & performance.*
+
+## 🛡️ Security Architecture & Logic Analysis
+
+The Hazy Content Factory is built for autonomy, but certain design patterns have been evaluated from a security architecture perspective to ensure resilience:
+
+### Frontend Next.js Loopholes Mitigated
+1. **Rate Limit Spoofing (Upstash Redis)**: The frontend AI chat route relies on `x-forwarded-for` to identify client IPs. In a standard edge deployment, this is generally safe, but if deployed behind custom proxies, this header can be spoofed by attackers to bypass limits. **Recommendation:** Ensure standard edge IP headers (`req.ip`) are strictly validated to prevent API exhaustion.
+2. **Stateless Fallback Risk**: The `api/chat/route.ts` rate limiter uses an in-memory `Map` fallback if Redis goes offline. Because serverless functions scale horizontally and reset on cold starts, this in-memory map provides zero real DDoS protection. **Recommendation:** Treat Redis as a hard dependency rather than falling back to local state.
+3. **Prompt Injection Vectors**: The Gemini AI chatbot includes a playful redirect instruction for jailbreaks. Advanced users might still attempt to leak the `hazyKnowledge` base through complex prompt injections. The risk is accepted as the knowledge base is public marketing data, but input sanitization is recommended.
+
+### Cost-Optimized / Zero-Cost API Infrastructure
+The system's backend is meticulously engineered to achieve enterprise-grade scale while maintaining a **Zero-Cost Cloud Architecture**. By leveraging free-tier limits across premium services:
+- **Google Gemini API**: Utilized for intelligent script generation and visual search parameters within the generous free tier.
+- **Microsoft Edge-TTS**: Provides state-of-the-art neural voice synthesis with precise word-boundary syncing at zero cost.
+- **AWS Lambda & S3**: Serverless rendering chunks and off-thread extraction keep execution well within the free tier limits.
+- **Supabase PostgreSQL**: Manages state and self-healing telemetry within the free hobby tier.
+
+This cost-conscious design proves that high-retention, fully autonomous syndication pipelines can operate without burning through SaaS budgets.
+
+---
+
+## 🎨 Master AI Prompt: Vercel Frontend Redesign
+*The following master prompt was used with AI coding assistants (Cursor, Windsurf, Claude Code) to rebuild the marketing site.*
+
+<details>
+<summary><strong>View the Full $10K Redesign Prompt</strong></summary>
+
+```markdown
+# MASTER PROMPT — HAZY CONTENT FACTORY: $10K Website Redesign
+## For use with an AI coding assistant (Cursor, Windsurf, Claude Code, etc.)
+
+---
+
+## CONTEXT — WHO YOU ARE WORKING WITH
+
+You are rebuilding the **Hazy Content Factory** marketing site (`hazyfactory.vercel.app`) — a Next.js 14 App Router project (TypeScript, Framer Motion, Tailwind/CSS vars, Google Fonts: Inter + Syne). The existing codebase includes:
+
+- `app/page.tsx` — the home/dashboard page (currently a docs page — it needs to be the hero marketing page)
+- `app/docs/page.tsx` — the docs page with left sidebar + TOC
+- `components/ChatBot.tsx` — the floating AI assistant (pipeline chatbot, Gemini-powered)
+- `components/Core3D.tsx` — a canvas-based 3D wireframe sphere animation
+- `app/api/chat/route.ts` — Gemini chat API with Upstash Redis rate limiting
+- `app/api/latest-video/route.ts` — YouTube RSS feed route
+- `app/globals.css` — full CSS variable system (dark/light theme)
+- `app/layout.tsx` — root layout with Inter + Syne fonts
+
+**Design system already in place:**
+```css
+--background: #050505
+--foreground: #f0f0f2
+--primary: #8b5cf6  (violet)
+--secondary: #d946ef  (fuchsia)
+--accent: #10b981  (emerald — currently unused on the homepage, use it)
+--card-bg: rgba(255,255,255,0.025)
+--card-border: rgba(255,255,255,0.07)
+Font display: Syne 800, font-body: Inter
+```
+
+**Do NOT change the ChatBot, Core3D, route files, layout, or globals.css unless a specific targeted change is listed below. Only rebuild `app/page.tsx`.**
+
+---
+
+## THE BRIEF — WHAT WE ARE BUILDING
+
+The project is called **youtube-shorts-automator** — a 6-stage, fully autonomous cloud-native pipeline that takes a topic queue in Supabase, writes scripts with Gemini AI, generates voice with Edge-TTS, renders video via React Remotion on AWS Lambda, and distributes to YouTube Shorts, TikTok, and Meta Reels — all triggered by GitHub Actions. Zero human touchpoints.
+
+**Target audience:** Developers, indie hackers, content creators, and potential collaborators who land on the site. The page has ONE job: make them feel like they just discovered something that genuinely doesn't need them — and make them want to hire Kyrell or star the repo.
+
+**Aesthetic direction (reference images provided):** The Arcane fan site (dark background, neon accent, full-bleed character image overlaid with oversized title text breaking behind the figure) and the Stormtrooper toy store (bold product-forward hero with type running behind the subject). We want that same cinematic, "something is being revealed to you" feeling — but tailored to an autonomous video pipeline. Think: a machine is running while you watch.
+
+---
+
+## WHAT TO BUILD — `app/page.tsx` COMPLETE REBUILD
+
+Build a single-page marketing site with the following sections in order. Each section has specific animation requirements. All scroll-triggered animations must use **Framer Motion's `useInView` + `useScroll` + `useTransform`** — do NOT use GSAP or any external scroll library.
+
+---
+
+### SECTION 0 — STICKY NAVBAR (already exists, keep as-is from globals.css classes)
+
+Keep `pill-nav`, `nav-links`, `nav-star`, `theme-toggle`, `nav-cta` classes. No changes needed. Re-implement the navbar from the existing site faithfully.
+
+---
+
+### SECTION 1 — HERO (the cinematic reveal)
+
+**Layout:** Full viewport height (`100svh`). Dark background. The `Core3D` 3D wireframe sphere goes full-bleed as a background element (already written — just import and use it).
+
+**Headline:** Two lines of oversized Syne 800 text, `clamp(4rem, 11vw, 9rem)`, letter-spacing `-0.05em`. Line 1: `"ZERO"` in white. Line 2: `"HUMAN."` — the word "HUMAN" rendered with a **text-stroke effect** (1px stroke, transparent fill, primary color stroke) so it feels outlined/etched. This is the signature typographic choice.
+
+**Sub-headline:** `"6 stages. 3 platforms. 0 touchpoints."` — rendered as three stat pills in a row. Each pill: `background: rgba(255,255,255,0.05)`, `border: 1px solid var(--card-border)`, `border-radius: 999px`, `padding: 0.35rem 1rem`, small Syne font. The number is accent-colored (`--accent: #10b981`), the label in muted white.
+
+**CTA row:** Two buttons side by side. Left: solid white pill button (`nav-cta` class) — "Watch the Pipeline →". Right: ghost pill button (border only) — "Star on GitHub ★". Right button shows a pulsing dot beside the text.
+
+**Entry animation:** On mount, the headline stagger-blurs up (existing `ANIM_BLUR_UP` pattern: `opacity 0→1, y 20→0, filter blur(8px)→0`). Delay each child by 0.1s. The Core3D canvas fades in last at 0.6s delay.
+
+**Scroll parallax:** As user scrolls down from the hero, the headline translates upward at 0.4× scroll speed using `useScroll` + `useTransform` so the text "floats" as you scroll past.
+
+---
+
+### SECTION 2 — PIPELINE TICKER (marquee)
+
+A full-width horizontal marquee strip, `background: rgba(139,92,246,0.06)`, `border-top` and `border-bottom: 1px solid var(--card-border)`, `padding: 0.7rem 0`. Height ~40px.
+
+Content: repeating sequence of stage names with icons: `▶ INGEST → SYNTHESIZE → VOICE → RENDER → SYNDICATE → CI/CD ▶` — repeated 4× so the loop is seamless. Use `.ticker-track` CSS class from globals.css (already defined as `animation: ticker 40s linear infinite`).
+
+---
+
+### SECTION 3 — PIPELINE STAGES (scrollytelling)
+
+**The signature section.** 6 pipeline stages, one per scroll "panel." Not a grid — a **sticky scrollytelling layout.**
+
+**Outer wrapper:** `position: relative`, `height: 600vh` (100vh × 6).
+
+**Sticky container inside:** `position: sticky`, `top: 0`, `height: 100vh`, `display: flex`, `align-items: center`.
+
+**Inside the sticky container:** A two-column layout:
+- Left (40%): The stage number (`01`–`06`) in massive Syne 800, `clamp(6rem, 15vw, 14rem)`, with a gradient — violet to fuchsia — and a stage label below it.
+- Right (60%): Stage name as H2, tech badge (pill with tech name), description paragraph, and a mock "terminal" code block showing what that stage does.
+
+**Animation logic:** Use `useScroll({ target: sectionRef })` + `useTransform(scrollYProgress, [0,1], ...)` to derive a `stageIndex` (0–5). As the user scrolls, smoothly transition between stages. Use `AnimatePresence` with `mode="wait"` to crossfade stage content (left number + right content) as the index changes. The active stage number should scale up from 0.85 to 1.0 with an opacity fade.
+
+**Stage data** (use this exactly, already in the knowledge base):
+```
+01 Ingestion — Supabase
+   Topics queued, deduplicated, and prioritized. Idempotency keys prevent re-processing.
+
+02 Synthesis — Google Gemini AI
+   Anti-AI-slop protocols enforce natural, engaging scripts instead of generic output.
+
+03 Voice — Microsoft Edge-TTS
+   Neural voice synthesis with <5ms word-boundary sync to subtitle frames.
+
+04 Render — React Remotion v4 + AWS Lambda
+   Serverless frame-accurate video rendering. No local GPU. 450 frames/Lambda.
+
+05 Syndication — YouTube API + TikTok API + Meta Graph API
+   Parallel upload streams. One render hits 3 platforms simultaneously.
+
+06 CI/CD — GitHub Actions
+   Cron-scheduled or push-triggered. The factory never stops.
+```
+
+---
+
+### SECTION 4 — METRICS STRIP (glassmorphism cards)
+
+A horizontal row of 4 stats. Responsive: 4-col desktop, 2-col tablet, 1-col mobile.
+
+Each card: `glass` class (already in globals.css — backdrop-filter blur, card-bg, card-border), `border-radius: 1.25rem`, `padding: 2rem 1.75rem`. Inside:
+- Large number/value in Syne 800, `clamp(2.5rem, 5vw, 4rem)`, accent color (`#10b981`)
+- Label beneath in muted foreground, Inter 400, 0.9rem
+
+Stats:
+- `< 5ms` / Subtitle Sync Drift
+- `0` / Duplicate Uploads  
+- `3` / Platforms Simultaneous
+- `100%` / Serverless
+
+**Scroll animation:** Each card uses `useInView` with `amount: 0.3`. On enter, animate from `opacity: 0, y: 40` to `opacity: 1, y: 0` with a `delay` of `index * 0.12s`. The number counts up from 0 using a simple `useState` + `useEffect` + `setInterval` counter when in view. For `< 5ms`, count from 0 to 5 then prepend `< `.
+
+---
+
+### SECTION 5 — LIVE VIDEO FEED
+
+Fetch the latest YouTube Short from `/api/latest-video` (already implemented — returns `{ videoId }`).
+
+**Layout:** Two-column, `gap: 5rem`. Left: copy. Right: embedded video.
+
+Left column:
+- Eyebrow label: `"LIVE OUTPUT"` in `--accent` color, uppercase, 0.75rem
+- H2: `"The machine is already running."` — Syne 800, `clamp(2rem, 4vw, 3.5rem)`
+- Sub-copy: `"Every Short you see below was produced without a single human edit. Script, voice, render, upload — fully autonomous."` — muted foreground, 1.05rem, line-height 1.75
+- A row of 3 platform badges: YouTube Shorts, TikTok, Meta Reels — each as a small pill with the platform name
+
+Right column: `<iframe>` with `src="https://www.youtube.com/embed/${videoId}"`, `width: 315px`, `height: 560px` (9:16 portrait), `border-radius: 1.25rem`, wrapped in a `glass` container with a subtle violet glow (`box-shadow: 0 0 60px rgba(139,92,246,0.25)`).
+
+While loading, show a `glass` placeholder skeleton that pulses with `@keyframes pulse` (opacity 0.4 → 0.8).
+
+**Scroll animation:** Left column fades in from left (`x: -30 → 0`). Right column fades in from right (`x: 30 → 0`). Both triggered by `useInView`.
+
+---
+
+### SECTION 6 — OPEN SOURCE CTA
+
+Full-width dark section, `padding: 6rem 2rem`. `background: radial-gradient(ellipse at center, rgba(139,92,246,0.08) 0%, transparent 70%)`.
+
+Center-aligned:
+- Eyebrow: `"OPEN SOURCE"` — accent color
+- H2: `"Fork it. Improve it. Run it."` — Syne 800, `clamp(2rem, 5vw, 4rem)`, white
+- Sub-copy: `"The full pipeline is on GitHub. Star it, fork it, or open a PR. Kyrell reads every issue."` — muted
+- Two buttons: `"View on GitHub →"` (ghost pill, border primary) + `"Read the Docs →"` (solid white pill, links to `/docs`)
+
+**Animation:** The entire block scales from `scale: 0.94` to `scale: 1` and fades in on `useInView`.
+
+---
+
+### SECTION 7 — CONTACT (already exists — preserve structure)
+
+Use the existing `.contact-grid` CSS class (already in globals.css: 2-col grid, `gap: 5rem`, `align-items: center`, `min-height: 500px`).
+
+Left: Headline `"Scale Your Vision."` + sub-copy about hiring/collaboration.
+Right: Contact form with fields for Name and Message, a submit button.
+
+The form posts to the contact API (you can use a `mailto:` fallback or Formspree — leave a `// TODO: wire to your form endpoint` comment).
+
+**Micro-interaction:** Each input field border transitions from `--card-border` to `--primary` with `box-shadow: 0 0 0 3px rgba(139,92,246,0.15)` on focus. The submit button has the shimmer animation (`nav-cta::before` already defined in globals.css).
+
+---
+
+### SECTION 8 — FOOTER
+
+Simple footer with: left = `HAZY.` wordmark in Syne 800 + copyright. Center = nav links (Docs, GitHub, YouTube). Right = `"Built by Kyrell Santillan"` with a GitHub link.
+
+---
+
+## GLOBAL ANIMATION RULES
+
+1. **ALL scroll-triggered animations** use Framer Motion `useInView` with `{ once: true, amount: 0.2 }` unless otherwise specified. Never trigger on every scroll direction — enter only.
+
+2. **Respect `prefers-reduced-motion`.** Wrap all `motion` components with a check: `const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches`. If true, disable all animation variants (set to `{}`) and remove `filter: blur()` transitions.
+
+3. **The scrollytelling section (Section 3) is the performance-critical path.** Use `will-change: transform` on the sticky container. Debounce no — Framer Motion handles this natively with `useScroll`.
+
+4. **NO animation stacking.** Do not apply both a `useInView` blur and a parallax transform to the same element. Pick one per element.
+
+5. **Depth illusion via z-index layering, not shadow stacking.** The Core3D canvas sits at `z-index: 0`. The hero text at `z-index: 2`. A gradient overlay at `z-index: 1` (`linear-gradient(to bottom, transparent 60%, var(--background) 100%)`) so the globe fades into the page.
+
+---
+
+## MICRO-INTERACTION SPECIFICATIONS
+
+- **Nav links:** Existing `nav-link::after` underline slide (already in globals.css) — keep as-is.
+- **Pipeline stage cards** (Section 3 right column): On desktop hover, the terminal code block gets a `border-color: rgba(139,92,246,0.4)` transition over 0.25s.
+- **Metric cards** (Section 4): On hover, `transform: translateY(-4px)` + `box-shadow: 0 16px 40px rgba(139,92,246,0.15)` — use `hover-glow` class already in globals.css.
+- **CTA buttons:** All pill buttons get `whileHover={{ scale: 1.04, y: -2 }}` and `whileTap={{ scale: 0.97 }}` via Framer Motion's `motion.a` or `motion.button`. Never apply both CSS `:hover` transform AND Framer `whileHover` — pick Framer only.
+- **GitHub star button in navbar:** Show a subtle live star count fetched from `https://api.github.com/repos/Hazy019/youtube-shorts-automator` — display the `stargazers_count` field. Cache in `useState`, fetch in `useEffect` once on mount.
+
+---
+
+## PARALLAX DEPTH RULES (Section 1 only)
+
+Use `useScroll` scoped to the hero section via `ref`:
+
+```tsx
+const heroRef = useRef(null);
+const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+const headlineY = useTransform(scrollYProgress, [0, 1], ['0%', '-30%']);
+const coreOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+```
+
+Apply `headlineY` to the headline container's `y` style. Apply `coreOpacity` to the Core3D wrapper's `opacity` style. This creates a 3-layer parallax: background (Core3D fades out), midground (hero text drifts up), foreground (CTAs stay pinned).
+
+---
+
+## TECH CONSTRAINTS
+
+- Next.js 14 App Router — file must be `'use client'` since it uses hooks + animations.
+- All imports from `framer-motion`: `motion`, `AnimatePresence`, `useScroll`, `useTransform`, `useInView`.
+- Use `useRef`, `useState`, `useEffect` from React.
+- No new npm packages. Do NOT install GSAP, Three.js, Lottie, or any animation library that is not already in `package.json`. Framer Motion is already installed.
+- All CSS must use existing CSS variable tokens from `globals.css`. No hardcoded hex values except for `#10b981` (accent) which is in the token system.
+- Images: There are no local image assets. Do not reference `/public/` images that don't exist. The `Core3D` canvas is the only visual background element.
+- The `ChatBot` component is imported in the home page and rendered floating — keep it in `page.tsx`. It is already fully implemented.
+
+---
+
+## FILE STRUCTURE OF CHANGES
+
+```
+app/
+  page.tsx          ← FULL REBUILD (this is the only file being touched)
+  docs/
+    page.tsx        ← NO CHANGE
+  api/
+    chat/route.ts   ← NO CHANGE
+    latest-video/route.ts ← NO CHANGE
+  globals.css       ← NO CHANGE
+  layout.tsx        ← NO CHANGE
+components/
+  ChatBot.tsx       ← NO CHANGE (import and use it)
+  Core3D.tsx        ← NO CHANGE (import and use it)
+data/
+  hazyKnowledge.ts  ← NO CHANGE
+```
+
+---
+
+## QUALITY BAR
+
+Before considering this done, verify:
+
+- [ ] Hero headline uses Syne 800 with the outlined "HUMAN." text-stroke effect
+- [ ] Core3D canvas renders behind the hero text with the gradient fade-out
+- [ ] Scrollytelling section switches stages smoothly as user scrolls (test in browser, not just visual)
+- [ ] Metric counters animate up from zero on scroll entry
+- [ ] Live video embed fetches and renders the latest YouTube Short (or shows skeleton on error)
+- [ ] ChatBot is still visible and functional
+- [ ] Theme toggle (dark/light) still works across all sections
+- [ ] All buttons have Framer micro-interactions (no naked CSS `:hover` transforms)
+- [ ] Mobile layout: pipeline grid → single column, hero text scales correctly via `clamp()`, contact grid stacks
+- [ ] `prefers-reduced-motion` is respected globally
+- [ ] No TypeScript errors (`strict` mode)
+- [ ] No console errors on mount
+
+---
+
+## WHAT NOT TO DO
+
+- Do NOT add a loading spinner/skeleton to the entire page — only to the video embed
+- Do NOT use numbered stage markers in a static grid (01/02/03 decorative numbers) — they only appear in the scrollytelling section where order carries real meaning
+- Do NOT add a hero background image — Core3D is the background
+- Do NOT add Lottie, Three.js, or GSAP — Framer Motion only
+- Do NOT wrap every single section in `AnimatePresence` — only elements that mount/unmount conditionally
+- Do NOT add fake stat counters or placeholder metrics — use only the verified numbers from the knowledge base
+- Do NOT use `overflow: hidden` on the `<body>` or page root — it breaks the sticky scrollytelling
+- Do NOT implement a fake "terminal that types" animation on the hero — it reads as AI-generated
+```
+</details>

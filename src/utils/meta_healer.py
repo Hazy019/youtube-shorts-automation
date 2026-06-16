@@ -38,21 +38,37 @@ def perform_meta_recovery():
         res = supabase.table("videos").select("*")\
             .not_.is_("s3_video_url", "null")\
             .order("created_at", desc=True)\
-            .limit(2)\
+            .limit(50)\
             .execute()
 
         if not res.data:
             print("✨ No videos with S3 assets found. Nothing to heal.")
             return
 
+        # Filter locally for those that actually need recovery
+        needs_recovery = []
+        for r in res.data:
+            fb = r.get("facebook_status")
+            ig = r.get("instagram_status")
+            if fb in ["FAILED", "PENDING", "INITIALIZED"] or ig in ["FAILED", "PENDING", "INITIALIZED"]:
+                needs_recovery.append(r)
+
+        if not needs_recovery:
+            print("✨ All recent Meta uploads are already SUCCESS. Great job!")
+            return
+
+        # Limit to processing 2 per run to avoid spamming the API
+        MAX_PER_RUN = 2
+        videos_to_process = needs_recovery[:MAX_PER_RUN]
+
         meta = None # Lazy init
         processed_count = 0
         success_count = 0
         failed_count = 0
         ig_healed_count = 0
-        IG_MAX_PER_RUN = 2  # Limits to 2 per run as requested
+        IG_MAX_PER_RUN = MAX_PER_RUN
 
-        for row in res.data:
+        for row in videos_to_process:
             topic = row.get("topic")
             fb_status = row.get("facebook_status")
             ig_status = row.get("instagram_status")
@@ -127,7 +143,7 @@ def perform_meta_recovery():
             
             processed_count += 1
             # 60s cooldown between uploads — prevents Meta's bulk-publish rate limiter
-            if processed_count < len([r for r in res.data if r.get('facebook_status') in ['FAILED','PENDING','INITIALIZED'] or r.get('instagram_status') in ['FAILED','PENDING','INITIALIZED']]):
+            if processed_count < len(videos_to_process):
                 print("⏸  Cooling down 60s before next video...")
                 time.sleep(60)
 
