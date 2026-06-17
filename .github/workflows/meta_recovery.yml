@@ -42,5 +42,9 @@ jobs:
       - name: Install Python Requirements
         run: pip install -r requirements.txt
 
+      # Fail-fast: validate META_PAGE_ACCESS_TOKEN before wasting run minutes
+      - name: Verify Meta Token (Pre-flight)
+        run: python tools/verify_meta_token.py
+
       - name: Run Meta Recovery
         run: python -m src.utils.meta_healer
