@@ -169,23 +169,3 @@ python run_factory.py
 
 ---
 *Maintained by Hazy. Engineered for absolute scale & performance.*
-
-## 🛡️ Security Architecture & Logic Analysis
-
-The Hazy Content Factory is built for autonomy, but certain design patterns have been evaluated from a security architecture perspective to ensure resilience:
-
-### Frontend Next.js Loopholes Mitigated
-1. **Rate Limit Spoofing (Upstash Redis)**: The frontend AI chat route relies on `x-forwarded-for` to identify client IPs. In a standard edge deployment, this is generally safe, but if deployed behind custom proxies, this header can be spoofed by attackers to bypass limits. **Recommendation:** Ensure standard edge IP headers (`req.ip`) are strictly validated to prevent API exhaustion.
-2. **Stateless Fallback Risk**: The `api/chat/route.ts` rate limiter uses an in-memory `Map` fallback if Redis goes offline. Because serverless functions scale horizontally and reset on cold starts, this in-memory map provides zero real DDoS protection. **Recommendation:** Treat Redis as a hard dependency rather than falling back to local state.
-3. **Prompt Injection Vectors**: The Gemini AI chatbot includes a playful redirect instruction for jailbreaks. Advanced users might still attempt to leak the `hazyKnowledge` base through complex prompt injections. The risk is accepted as the knowledge base is public marketing data, but input sanitization is recommended.
-
-### Cost-Optimized / Zero-Cost API Infrastructure
-The system's backend is meticulously engineered to achieve enterprise-grade scale while maintaining a **Zero-Cost Cloud Architecture**. By leveraging free-tier limits across premium services:
-- **Google Gemini API**: Utilized for intelligent script generation and visual search parameters within the generous free tier.
-- **Microsoft Edge-TTS**: Provides state-of-the-art neural voice synthesis with precise word-boundary syncing at zero cost.
-- **AWS Lambda & S3**: Serverless rendering chunks and off-thread extraction keep execution well within the free tier limits.
-- **Supabase PostgreSQL**: Manages state and self-healing telemetry within the free hobby tier.
-
-This cost-conscious design proves that high-retention, fully autonomous syndication pipelines can operate without burning through SaaS budgets.
-
----
