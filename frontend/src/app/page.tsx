@@ -592,7 +592,7 @@ export default function Home() {
           {/* Ambient glow */}
           <div style={{ position: 'absolute', top: '40%', left: '20%', width: '500px', height: '500px', background: 'rgba(139,92,246,0.06)', borderRadius: '50%', filter: 'blur(120px)', pointerEvents: 'none' }} />
 
-          <div style={{ width: '100%', maxWidth: '1300px', margin: '0 auto', padding: '0 clamp(1rem, 4vw, 3rem)', display: 'grid', gridTemplateColumns: '40% 60%', gap: '4rem', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+          <div className="pipeline-grid">
 
             {/* Left — Stage number */}
             <AnimatePresence mode="wait">
@@ -676,6 +676,7 @@ export default function Home() {
                   fontFamily: "'Courier New', monospace",
                   fontSize: '0.8rem', lineHeight: 1.75,
                   color: '#c4c4d0', maxWidth: '480px',
+                  width: '100%',
                   transition: 'border-color 0.25s ease',
                   position: 'relative',
                 }}

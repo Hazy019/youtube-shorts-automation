@@ -570,3 +570,24 @@ button {
     padding: 1.5rem 1rem;
   }
 }
+
+/* ── Responsive Pipeline Grid ── */
+.pipeline-grid {
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 4vw, 3rem);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 992px) {
+  .pipeline-grid {
+    grid-template-columns: 40% 60%;
+    gap: 4rem;
+  }
+}

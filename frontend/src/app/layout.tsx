@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "YouTube Shorts Automation | Faceless Video Generator",
     description: "Cloud-native pipeline that produces and syndicates short-form video content 24/7.",
-    url: "https://shortsautomation.vercel.app",
+    url: "https://shortsautomations.vercel.app",
     siteName: "ShortsAutomation",
     images: [{ url: "/brand-image.png", width: 1200, height: 630, alt: "Shorts Automation Engine" }],
     locale: "en_US",
