@@ -206,7 +206,7 @@ def make_cloud_video(
                 err = f"Fatal config error (no retry useful): {str(error_data)[:200]}"
                 print(f"\n  {err}", flush=True)
                 if "compositions" in err.lower() or "serve url" in err.lower():
-                    err += "\nACTION: Your Remotion bundle is missing or returning 403. Redeploy with: npx remotion lambda sites create src/index.ts --site-name=hazy-v14"
+                    err += "\nACTION: Your Remotion bundle is missing or returning 403. Redeploy with: npx remotion lambda sites create src/index.ts --site-name=hazy-factory"
                 return None, err
 
             if _is_stitcher_timeout(error_data):

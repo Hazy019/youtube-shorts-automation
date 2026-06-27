@@ -67,11 +67,12 @@ def check_environment():
                 )
                 print("  -> Deploying site...")
                 result = subprocess.run(
-                    ["npx", "remotion", "lambda", "sites", "create", "src/index.ts", "--site-name=hazy-v14"],
+                    ["npx", "remotion", "lambda", "sites", "create", "src/index.ts", "--site-name=hazy-factory"],
                     cwd="hazy-remotion-cloud",
                     shell=True if sys.platform == "win32" else False,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
                     check=True
                 )
                 print("AUTO-HEALING SUCCESS: Remotion site redeployed.")
