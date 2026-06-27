@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const syne = Syne({ subsets: ["latin"], variable: '--font-syne' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://shortsautomation.vercel.app'),
+  metadataBase: new URL('https://shortsautomations.vercel.app'),
   title: "YouTube Shorts Automation | Faceless Video Generator",
   description: "A fully automated, cloud-native YouTube Shorts automation system that researches, writes, voices, renders, and distributes faceless short-form content 24/7.",
   keywords: ["YouTube Shorts automation", "faceless channel automation", "AI video generator", "ShortsAutomation", "TikTok automation", "serverless video production", "Kyrell Santillan"],
@@ -30,9 +30,6 @@ export const metadata: Metadata = {
     icon: [{ url: '/favicon-circle.png', type: 'image/png', sizes: '128x128' }],
     shortcut: '/favicon-circle.png',
     apple: '/favicon-circle.png',
-  },
-  verification: {
-    google: "jurX14tSOTCPj1zMR21guSGjlv22Q17yRsd9fNjop5g",
   },
 };
 
