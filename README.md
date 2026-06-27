@@ -1,29 +1,31 @@
-# 🌌 Hazy Content Factory v14
+# 🌌 YouTube Shorts Automation
 **Enterprise-Grade Programmatic Video Production & Multi-Platform Syndication**
 
-[![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen.svg?style=for-the-badge)](https://github.com/Hazy019/youtube-shorts-automator)
-[![Automation](https://img.shields.io/badge/Workflow-GitHub--Actions-blueviolet.svg?style=for-the-badge)](https://github.com/Hazy019/youtube-shorts-automator/actions)
+[![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen.svg?style=for-the-badge)](https://github.com/Hazy019/youtube-shorts-automation)
+[![Automation](https://img.shields.io/badge/Workflow-GitHub--Actions-blueviolet.svg?style=for-the-badge)](https://github.com/Hazy019/youtube-shorts-automation/actions)
 [![Infrastructure](https://img.shields.io/badge/Infrastructure-AWS--Lambda%20%7C%20S3-orange.svg?style=for-the-badge)](https://aws.amazon.com/)
 [![Database](https://img.shields.io/badge/Database-Supabase--PostgreSQL-blue.svg?style=for-the-badge)](https://supabase.com/)
 
-Hazy Content Factory is a state-of-the-art, fully autonomous programmatic video production pipeline. It leverages multi-model generative AI, serverless cloud parallel-processing, and stateful recovery layers to syndicate high-retention video content across YouTube Shorts, TikTok, Facebook Reels, and Instagram Reels at scale.
+YouTube Shorts Automation is a state-of-the-art, fully autonomous programmatic video production pipeline. It leverages multi-model generative AI, serverless cloud parallel-processing, and stateful recovery layers to syndicate high-retention video content across YouTube Shorts, TikTok, Facebook Reels, and Instagram Reels at scale. 
+
+**Cost-Effective by Design:** This system is engineered to minimize operational costs by integrating with **free APIs** wherever possible, including the Google Gemini API for script generation and Pexels/Pixabay APIs for high-quality royalty-free background assets.
 
 ---
 
-## 🏗️ System Architecture
+## 🏗️ System Architecture & How It Works
 
-The following diagram maps the absolute execution flow of the factory from initial startup and self-healing DB checks to parallel serverless rendering, platform syndication, and automatic resource teardown.
+The following diagram maps the absolute execution flow of the system from initial startup and self-healing DB checks to parallel serverless rendering, platform syndication, and automatic resource teardown.
 
 ```mermaid
 graph TD
     A[run_factory.py Orchestrator] --> B[Supabase: find_recovery_record]
-    B -->|Found stuck video| C[Loadtiming/Keyword Payload]
-    B -->|Fresh run| D[Call Gemini 3 Flash API]
+    B -->|Found stuck video| C[Load timing/Keyword Payload]
+    B -->|Fresh run| D[Call Free Gemini 3 Flash API]
     D --> E[Save Payload to Supabase & Local Failsafe]
     C --> F[Edge-TTS: Neural Speech Synthesis]
     E --> F
     F --> G[B-Roll Sourcing: assets.py]
-    G -->|Pexels/Pixabay API| H[Trimming via FFmpeg: duration/clips + buffer]
+    G -->|Free Pexels/Pixabay API| H[Trimming via FFmpeg: duration/clips + buffer]
     H --> I[Upload Assets to AWS S3]
     I --> J[Orchestrate Cloud Render: builder.py]
     J -->|Chunking: min total, 300f| K[Invoke AWS Lambda Workers in Parallel]
@@ -34,6 +36,13 @@ graph TD
     O --> P[S3 asset cleanup: Delete temp backgrounds/audio]
 ```
 
+### The Generation Process:
+1. **Script & Metadata Generation**: The orchestrator triggers Google's Gemini Flash model (utilizing the free tier) to write a highly engaging script, generate optimized search keywords for background footage, and write viral titles and descriptions.
+2. **Audio Synthesis**: Microsoft Edge-TTS translates the generated text into natural-sounding speech while providing precise word-level timestamps used for dynamic on-screen captions.
+3. **Asset Sourcing**: The system queries free stock footage platforms (Pexels, Pixabay) using the generated keywords to download relevant, high-quality background video clips.
+4. **Cloud Rendering**: Using Remotion and AWS Lambda, the visual layout (captions, backgrounds, transitions) is rendered in parallel chunks, ensuring rapid generation times.
+5. **Syndication**: The completed video is then automatically distributed across connected social media accounts via their respective APIs.
+
 ---
 
 ## 🛠️ Technology Stack
@@ -41,7 +50,7 @@ graph TD
 | Layer | Technology | Purpose & Implementation Details |
 | :--- | :--- | :--- |
 | **Orchestrator** | `Python 3.12` | Coordinate multithreaded pipelines, file compression, API routing, and state syncing |
-| **Intelligence** | `Google Gemini 3 Flash` | Synthesize structured, zero-slop script content, viral titles, and visual search parameters |
+| **Intelligence** | `Google Gemini 3 Flash` | Synthesize structured scripts, viral titles, and visual search parameters (Free API) |
 | **Audio** | `Microsoft Edge-TTS` | High-fidelity neural speech synthesis with precise word-boundary timestamps for karaoke captions |
 | **Graphics** | `Remotion (React / TS)` | Programmatic canvas drawing, camera transitions, and visual layer management |
 | **Rendering** | `AWS Lambda` | Serverless cluster execution; processes up to 100+ concurrent rendering chunks |
@@ -70,7 +79,7 @@ Pre-downloading full-length B-roll clips (typically 30–60s) from S3 inside a L
 
 ## 🔄 Stateful Recovery & Self-Healing (Fault Tolerance)
 
-The Hazy Content Factory is designed for 100% hands-off reliability, featuring a two-tiered self-healing recovery layer:
+The system is designed for 100% hands-off reliability, featuring a two-tiered self-healing recovery layer:
 
 1.  **Local Failsafe Layer**: When a topic is generated, its timing structure and search keywords are instantly stored in a local failsafe file (`temp_recovery_{category}.json`). If the local process crashes, it resumes from the saved JSON file, preventing redundant Gemini API token usage.
 2.  **Stateful Supabase Layer**: The generative package is persisted to the database *before* rendering. If the orchestrator is force-terminated (e.g., cloud runner shutdown), `find_recovery_record` detects any record where:
@@ -136,8 +145,8 @@ The pipeline executes fully autonomously in the cloud, utilizing a secure GitHub
 Clone the repository and install all required system and project dependencies:
 ```powershell
 # Clone the repository
-git clone https://github.com/Hazy019/youtube-shorts-automator.git
-cd youtube-shorts-automator
+git clone https://github.com/Hazy019/youtube-shorts-automation.git
+cd youtube-shorts-automation
 
 # Install dependencies
 pip install -r requirements.txt
@@ -168,4 +177,4 @@ python run_factory.py
 ```
 
 ---
-*Maintained by Hazy. Engineered for absolute scale & performance.*
+*Engineered for absolute scale, performance, and cross-platform automation.*

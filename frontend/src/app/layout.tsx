@@ -6,24 +6,24 @@ const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const syne = Syne({ subsets: ["latin"], variable: '--font-syne' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://hazyfactory.vercel.app'),
-  title: "HAZY | Cloud-Native Autonomous Media",
-  description: "A fully automated, cloud-native video production system by Kyrell Santillan that researches, writes, voices, renders, and distributes short-form content 24/7.",
-  keywords: ["HAZY", "Kyrell Santillan", "AI video automation", "YouTube Shorts automation", "content engine", "serverless video production"],
+  metadataBase: new URL('https://shortsautomation.vercel.app'),
+  title: "YouTube Shorts Automation | Faceless Video Generator",
+  description: "A fully automated, cloud-native YouTube Shorts automation system that researches, writes, voices, renders, and distributes faceless short-form content 24/7.",
+  keywords: ["YouTube Shorts automation", "faceless channel automation", "AI video generator", "ShortsAutomation", "TikTok automation", "serverless video production", "Kyrell Santillan"],
   authors: [{ name: "Kyrell Santillan" }],
   openGraph: {
-    title: "HAZY | Cloud-Native Autonomous Media",
+    title: "YouTube Shorts Automation | Faceless Video Generator",
     description: "Cloud-native pipeline that produces and syndicates short-form video content 24/7.",
-    url: "https://hazyfactory.vercel.app",
-    siteName: "HAZY",
-    images: [{ url: "/brand-image.png", width: 1200, height: 630, alt: "HAZY Content Engine" }],
+    url: "https://shortsautomation.vercel.app",
+    siteName: "ShortsAutomation",
+    images: [{ url: "/brand-image.png", width: 1200, height: 630, alt: "Shorts Automation Engine" }],
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "HAZY | Cloud-Native Autonomous Media",
-    description: "A fully automated, serverless video machine by Kyrell Santillan. Zero local hardware. 24/7 production.",
+    title: "YouTube Shorts Automation | Faceless Video Generator",
+    description: "A fully automated, serverless video machine. Zero local hardware. 24/7 production.",
     images: ["/brand-image.png"],
   },
   icons: {
