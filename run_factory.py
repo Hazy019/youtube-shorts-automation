@@ -52,9 +52,12 @@ def check_environment():
     serve_url = os.getenv("SERVE_URL")
     print(f"Validating Remotion Site: {serve_url}")
     try:
-        r = requests.head(serve_url, timeout=10)
+        # Checking the base URL often returns 200 on AWS S3 even if the bundle is missing.
+        # We append /index.html to ensure the actual Remotion bundle files exist.
+        check_url = f"{serve_url.rstrip('/')}/index.html"
+        r = requests.head(check_url, timeout=10)
         if r.status_code in [403, 404]:
-            print(f"WARNING: Remotion SERVE_URL returned {r.status_code}. Site is likely missing.")
+            print(f"WARNING: Remotion bundle check ({check_url}) returned {r.status_code}. Site is likely missing.")
             print("AUTO-HEALING: Triggering Remotion site deployment...")
             try:
                 print("  -> Installing Node dependencies...")
@@ -77,10 +80,9 @@ def check_environment():
                 )
                 print("AUTO-HEALING SUCCESS: Remotion site redeployed.")
                 
-                # Try to parse the new URL from the output just in case
-                match = re.search(r"Serve URL\s+(https://\S+)", result.stdout)
+                match = re.search(r"Serve URL\s+(https://[^\s\x1b]+)", result.stdout)
                 if match:
-                    new_url = match.group(1)
+                    new_url = match.group(1).replace("/index.html", "")
                     os.environ["SERVE_URL"] = new_url
                     print(f"Updated SERVE_URL to: {new_url}")
             except subprocess.CalledProcessError as e:

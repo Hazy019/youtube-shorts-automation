@@ -135,6 +135,7 @@ def make_cloud_video(
     Render a video on AWS Lambda using single-chunk mode (no stitcher).
     Returns: (output_url: str | None, error_msg: str | None)
     """
+    global SERVE_URL
     if not SERVE_URL:
         return None, "SERVE_URL is not configured"
     if not background_urls:
@@ -203,10 +204,52 @@ def make_cloud_video(
 
         if error_data:
             if _is_fatal_config_error(error_data):
+                if "compositions" in str(error_data).lower() or "serve url" in str(error_data).lower():
+                    print("\n  AWS LAMBDA FATAL: Remotion bundle missing or returning 403.", flush=True)
+                    print("  AUTO-HEALING: Triggering Remotion site deployment from builder...", flush=True)
+                    try:
+                        import subprocess
+                        import sys
+                        import re
+                        
+                        print("  -> Installing Node dependencies...", flush=True)
+                        subprocess.run(
+                            ["npm", "install"],
+                            cwd="hazy-remotion-cloud",
+                            shell=True if sys.platform == "win32" else False,
+                            check=True,
+                            stdout=subprocess.DEVNULL
+                        )
+                        print("  -> Deploying site...", flush=True)
+                        result = subprocess.run(
+                            ["npx", "remotion", "lambda", "sites", "create", "src/index.ts", "--site-name=hazy-factory"],
+                            cwd="hazy-remotion-cloud",
+                            shell=True if sys.platform == "win32" else False,
+                            capture_output=True,
+                            text=True,
+                            encoding="utf-8",
+                            check=True
+                        )
+                        print("  AUTO-HEALING SUCCESS: Remotion site redeployed.", flush=True)
+                        
+                        match = re.search(r"Serve URL\s+(https://[^\s\x1b]+)", result.stdout)
+                        if match:
+                            new_url = match.group(1).replace("/index.html", "")
+                            SERVE_URL = new_url
+                            os.environ["SERVE_URL"] = new_url
+                            params.serve_url = new_url
+                            print(f"  Updated SERVE_URL to: {new_url}", flush=True)
+                            client = RemotionClient(region=REGION, serve_url=SERVE_URL, function_name=FUNCTION_NAME)
+                        
+                        print("  Retrying render after healing...", flush=True)
+                        continue
+                    except Exception as e:
+                        err = f"Fatal config error (auto-healing failed): {e}\nOriginal error: {str(error_data)[:200]}"
+                        print(f"\n  {err}", flush=True)
+                        return None, err
+                
                 err = f"Fatal config error (no retry useful): {str(error_data)[:200]}"
                 print(f"\n  {err}", flush=True)
-                if "compositions" in err.lower() or "serve url" in err.lower():
-                    err += "\nACTION: Your Remotion bundle is missing or returning 403. Redeploy with: npx remotion lambda sites create src/index.ts --site-name=hazy-factory"
                 return None, err
 
             if _is_stitcher_timeout(error_data):
