@@ -95,7 +95,7 @@ def cleanup_s3_storage(db: Client):
         # Check if Meta platforms are also done (SUCCESS or SKIPPED_LIMIT or ABANDONED)
         fb = item.get("facebook_status")
         ig = item.get("instagram_status")
-        safe_statuses = ["SUCCESS", "SKIPPED_LIMIT", "ABANDONED"]
+        safe_statuses = ["SUCCESS", "SKIPPED_LIMIT", "ABANDONED", "SKIPPED", "DISABLED"]
         
         if fb not in safe_statuses or ig not in safe_statuses:
             print(f"  Skipping ID {item['id']}: Meta syndication pending (FB: {fb}, IG: {ig})")

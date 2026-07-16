@@ -349,8 +349,8 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
 
             tiktok_payload = {
                 "tiktok_status":    "PENDING",
-                "facebook_status":  "PENDING",
-                "instagram_status": "PENDING",
+                "facebook_status":  "SKIPPED", # Meta disabled
+                "instagram_status": "SKIPPED", # Meta disabled
                 "s3_video_url":     final_video_url,
                 "tiktok_description": tiktok_description
             }
@@ -376,47 +376,47 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
             print(f"Warning: Failed to queue for TikTok: {e}")
             tiktok_status = "FAILED"
         
-        # [STEP 3/3] Meta (Facebook & Instagram) Direct Posting
-        fb_status = "PENDING"
-        ig_status = "PENDING"
+        # [STEP 3/3] Meta (Facebook & Instagram) Direct Posting (Disabled due to Meta account suspension)
+        fb_status = "SKIPPED"
+        ig_status = "SKIPPED"
         
-        try:
-            print("\n[STEP 3/3] Initiating Meta Direct Posting...")
-            meta = MetaAPI()
-            tags = viral_package.get('tags')
-            hashtags = " ".join(f"#{t}" for t in tags) if tags else "#shorts #gaming #facts"
-            meta_description = f"{viral_package['title']}\n\n{viral_package['description'][:1400]}\n\n{hashtags}"[:2200]
-
-            # Facebook
-            try:
-                fb_id = meta.upload_facebook_reel(final_video_url, meta_description)
-                if fb_id:
-                    fb_status = "SUCCESS"
-                    with_supabase_retry(supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("topic", full_package['topic']))
-                else:
-                    fb_status = "FAILED"
-                    with_supabase_retry(supabase.table("videos").update({"facebook_status": "FAILED"}).eq("topic", full_package['topic']))
-            except Exception as e:
-                print(f"  ⚠ Facebook Direct Upload Failed: {e}")
-                fb_status = "FAILED"
-
-            # Instagram
-            try:
-                ig_id = meta.upload_instagram_reel(final_video_url, meta_description)
-                if ig_id:
-                    ig_status = "SUCCESS"
-                    with_supabase_retry(supabase.table("videos").update({"instagram_status": "SUCCESS"}).eq("topic", full_package['topic']))
-                else:
-                    ig_status = "FAILED"
-                    with_supabase_retry(supabase.table("videos").update({"instagram_status": "FAILED"}).eq("topic", full_package['topic']))
-            except Exception as e:
-                print(f"  ⚠ Instagram Direct Upload Failed: {e}")
-                ig_status = "FAILED"
-
-        except Exception as e:
-            print(f"  ⚠ Meta API Initialization Failed: {e}")
-            fb_status = "FAILED"
-            ig_status = "FAILED"
+        # try:
+        #     print("\n[STEP 3/3] Initiating Meta Direct Posting...")
+        #     meta = MetaAPI()
+        #     tags = viral_package.get('tags')
+        #     hashtags = " ".join(f"#{t}" for t in tags) if tags else "#shorts #gaming #facts"
+        #     meta_description = f"{viral_package['title']}\n\n{viral_package['description'][:1400]}\n\n{hashtags}"[:2200]
+        # 
+        #     # Facebook
+        #     try:
+        #         fb_id = meta.upload_facebook_reel(final_video_url, meta_description)
+        #         if fb_id:
+        #             fb_status = "SUCCESS"
+        #             with_supabase_retry(supabase.table("videos").update({"facebook_status": "SUCCESS"}).eq("topic", full_package['topic']))
+        #         else:
+        #             fb_status = "FAILED"
+        #             with_supabase_retry(supabase.table("videos").update({"facebook_status": "FAILED"}).eq("topic", full_package['topic']))
+        #     except Exception as e:
+        #         print(f"  ⚠ Facebook Direct Upload Failed: {e}")
+        #         fb_status = "FAILED"
+        # 
+        #     # Instagram
+        #     try:
+        #         ig_id = meta.upload_instagram_reel(final_video_url, meta_description)
+        #         if ig_id:
+        #             ig_status = "SUCCESS"
+        #             with_supabase_retry(supabase.table("videos").update({"instagram_status": "SUCCESS"}).eq("topic", full_package['topic']))
+        #         else:
+        #             ig_status = "FAILED"
+        #             with_supabase_retry(supabase.table("videos").update({"instagram_status": "FAILED"}).eq("topic", full_package['topic']))
+        #     except Exception as e:
+        #         print(f"  ⚠ Instagram Direct Upload Failed: {e}")
+        #         ig_status = "FAILED"
+        # 
+        # except Exception as e:
+        #     print(f"  ⚠ Meta API Initialization Failed: {e}")
+        #     fb_status = "FAILED"
+        #     ig_status = "FAILED"
 
         ping_creator(youtube_link or "Upload Failed", tiktok_status, fb_status, ig_status, viral_package['title'])
 
