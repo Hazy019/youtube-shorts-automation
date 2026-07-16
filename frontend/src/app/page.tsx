@@ -299,7 +299,7 @@ export default function Home() {
         }}
       >
         {/* Logo */}
-        <div className="display-font" style={{ color: 'var(--foreground)', fontSize: '1.1rem', letterSpacing: '-0.02em', fontWeight: 900, flexShrink: 0 }}>HAZY.</div>
+        <div className="display-font" style={{ color: 'var(--foreground)', fontSize: '1.1rem', letterSpacing: '-0.02em', fontWeight: 900, flexShrink: 0 }}>HAZY · ShortsAutomation</div>
 
         {/* Center links */}
         <div className="nav-links hide-mobile">
@@ -438,6 +438,11 @@ export default function Home() {
         <motion.div
           style={{ y: headlineY, textAlign: 'center', zIndex: 2, width: '100%', padding: '0 clamp(1rem, 4vw, 2rem)', position: 'relative' }}
         >
+          {/* Visually hidden h1 for search crawler indexing */}
+          <h1 style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+            ShortsAutomation - Autonomous YouTube Shorts & TikTok Video Automation System by Kyrell Santillan
+          </h1>
+
           {/* Line 1: ZERO */}
           <motion.div
             {...(reduced ? {} : { initial: { opacity: 0, y: 20, filter: 'blur(8px)' }, animate: { opacity: 1, y: 0, filter: 'blur(0px)' }, transition: { duration: 0.9, delay: 0.1, ease: [0.16, 1, 0.3, 1] } })}
@@ -462,11 +467,26 @@ export default function Home() {
               lineHeight: 0.9,
               WebkitTextStroke: '1.5px var(--primary)',
               color: 'transparent',
-              marginBottom: '2.5rem',
+              marginBottom: '1rem',
             }}
           >
             HUMAN.
           </motion.div>
+
+          {/* Brand Sub-headline */}
+          <motion.p
+            {...(reduced ? {} : { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] } })}
+            style={{
+              fontSize: 'clamp(0.95rem, 1.4vw, 1.2rem)',
+              color: 'var(--foreground-muted)',
+              maxWidth: '650px',
+              margin: '0 auto 2.5rem auto',
+              lineHeight: 1.6,
+              fontFamily: 'var(--font-inter)',
+            }}
+          >
+            Welcome to <strong style={{ color: 'var(--foreground)' }}>ShortsAutomation</strong>: a fully autonomous, serverless content engine designed and engineered by <strong style={{ color: 'var(--foreground)' }}>Kyrell Santillan</strong> to research, voice, render, and syndicate short-form videos 24/7.
+          </motion.p>
 
           {/* Stat pills sub-headline */}
           <motion.div
@@ -1000,7 +1020,7 @@ export default function Home() {
         </div>
         {/* Main footer row */}
         <div style={{ padding: '1.75rem 1.5rem', maxWidth: '1300px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', color: 'var(--foreground-muted)', fontSize: '0.82rem', gap: '1rem' }}>
-          <div className="display-font" style={{ fontSize: '1.2rem', letterSpacing: '-0.02em' }}>HAZY.</div>
+          <div className="display-font" style={{ fontSize: '1.2rem', letterSpacing: '-0.02em' }}>ShortsAutomation</div>
           <div style={{ display: 'flex', gap: '1.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <a href="/docs" className="nav-link" style={{ fontSize: '0.8rem' }}>Documentation</a>
             <a href="https://github.com/Hazy019/youtube-shorts-automator" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ fontSize: '0.8rem' }}>GitHub</a>
