@@ -1,4 +1,5 @@
 # 🌌 YouTube Shorts Automation
+
 **Enterprise-Grade Programmatic Video Production & Multi-Platform Syndication**
 
 [![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen.svg?style=for-the-badge)](https://github.com/Hazy019/youtube-shorts-automation)
@@ -50,6 +51,7 @@ graph TD
 | Layer | Technology | Purpose & Implementation Details |
 | :--- | :--- | :--- |
 | **Orchestrator** | `Python 3.12` | Coordinate multithreaded pipelines, file compression, API routing, and state syncing |
+| **Frontend UI** | `Next.js 14 / TypeScript / Framer Motion` | A high-end visual dashboard displaying pipeline stats, interactive chatbots, and execution stages |
 | **Intelligence** | `Google Gemini 3 Flash` | Synthesize structured scripts, viral titles, and visual search parameters (Free API) |
 | **Audio** | `Microsoft Edge-TTS` | High-fidelity neural speech synthesis with precise word-boundary timestamps for karaoke captions |
 | **Graphics** | `Remotion (React / TS)` | Programmatic canvas drawing, camera transitions, and visual layer management |
@@ -94,11 +96,10 @@ The system is designed for 100% hands-off reliability, featuring a two-tiered se
 
 The pipeline executes fully autonomously in the cloud, utilizing a secure GitHub Actions runner scheduled around global social media traffic peaks.
 
-*   **Workflow Config**: [.github/workflows/factory.yml](file:///.github/workflows/factory.yml)
-*   **Automated Run Schedules**:
-    *   **06:30 AM ET** (`30 10 * * *` UTC) — Synchronized for the morning commute publishing slot.
-    *   **06:30 PM ET** (`30 22 * * *` UTC) — Synchronized for the evening prime-time publishing slot.
-*   **Manual Control**: Supports `workflow_dispatch` enabling immediate execution of either category directly from the GitHub Actions dashboard.
+*   **Workflows**:
+    *   **Main Factory Automation** ([factory.yml](file:///.github/workflows/factory.yml)): Triggered at **06:30 AM ET** (`30 10 * * *` UTC) and **06:30 PM ET** (`30 22 * * *` UTC) to run the main generator sequentially for channels. Supports manual override target through `SHIFT_CHANNEL` environment variables.
+    *   **Channel Metrics Reporting** ([analytics.yml](file:///.github/workflows/analytics.yml)): Regularly executes telemetry reports, collecting analytics on published video performance and pushing insights to Discord channels.
+    *   **Meta API Recovery** ([meta_recovery.yml](file:///.github/workflows/meta_recovery.yml)): Runs automated validation to self-heal and retry failed Facebook Reels and Instagram Reels postings.
 *   **Secrets Isolation**: All credentials (AWS access keys, Google Gemini keys, Supabase URLs, and YouTube OAuth Refresh Tokens) are securely loaded into the runner memory dynamically, ensuring zero repository footprint.
 
 ---
@@ -108,7 +109,14 @@ The pipeline executes fully autonomously in the cloud, utilizing a secure GitHub
 ```
 ├── .github/workflows/          # GitHub Actions CI/CD workflows
 │   ├── analytics.yml           # Channel metrics reporting engine
-│   └── factory.yml             # Main daily automation workflow
+│   ├── factory.yml             # Main daily automation workflow
+│   └── meta_recovery.yml       # Meta publishing self-healing and recovery workflow
+├── frontend/                   # Next.js Landing Page & Interactive Dashboard UI
+│   ├── src/                    # App Router pages and client React components
+│   │   ├── app/                # Global layout, variables, pages, and landing views
+│   │   └── components/         # 3D interactive core and AI chatbot integrations
+│   ├── package.json            # Frontend Node.js dependencies
+│   └── tsconfig.json           # TypeScript configuration
 ├── hazy-remotion-cloud/        # React-Remotion video composition source
 │   ├── src/
 │   │   ├── Composition.tsx     # Video styling, Offthread rendering & camera engine
@@ -128,13 +136,76 @@ The pipeline executes fully autonomously in the cloud, utilizing a secure GitHub
 │       ├── discord.py          # Push notification telemetries
 │       └── meta_healer.py      # Meta publication validation check
 ├── tools/                      # Diagnostic and utility suite
-│   ├── test_recovery_detection.py  # Dry-run database recovery test
-│   ├── list_failed_topics.py       # DB failed topic viewer
-│   ├── manual_recovery.py          # Video upload recovery engine
-│   └── queue_manager.py            # Maintenance and ghost records cleaner
+│   ├── bulk_tiktok_poster.py   # Bulk uploads videos to TikTok using cookies/automation
+│   ├── capture_tiktok_cookies.py # Captures TikTok session cookies interactively
+│   ├── get_voices.py           # Fetches and lists all available Edge-TTS neural voices
+│   ├── list_drive_folders.py   # Utility to list google drive asset folders
+│   ├── list_failed_topics.py   # DB failed topic viewer
+│   ├── manual_recovery.py      # Video upload recovery engine
+│   ├── queue_manager.py        # Maintenance and ghost records cleaner
+│   ├── retry_meta.py           # Simple retrying mechanism for Meta API
+│   ├── run_us_only.py          # Launcher that forces category to US-centric
+│   ├── test_notifications.py   # Tests Discord webhook alerts and embeds
+│   ├── test_recovery_detection.py # Dry-run database recovery test
+│   ├── test_security_real.py   # Runs validation checks on video and download security
+│   ├── test_self_healing.py    # End-to-end dry-run test of orchestrator's self-healing
+│   ├── test_topic_detection.py # Verifies topic extraction and validation logic
+│   ├── update_tokens.py        # Interactive CLI tool to update YouTube OAuth tokens
+│   ├── verify_apis.py          # Pre-flight checker for all external API credentials
+│   ├── verify_meta_token.py    # Validates Meta page access tokens and scopes
+│   └── verify_tiktok_sync.py   # Tests TikTok publication pipeline and cookies status
+├── .env                        # Local environment credentials configuration
 ├── run_factory.py              # Main pipeline entrypoint
 ├── requirements.txt            # Python dependencies
 └── README.md                   # System documentation
+```
+
+---
+
+## 🔑 Configuration & Environment Variables
+
+Copy or create a `.env` file in the root directory. Configure the following variables:
+
+```ini
+# --- Core API Keys ---
+GEMINI_API_KEY="AIzaSy..."          # Google Gemini AI API key
+ELEVENLABS_API_KEY="sk_..."        # ElevenLabs key (optional fallback)
+PEXELS_API_KEY="ewNri..."          # Pexels background asset downloader
+PIXABAY_API_KEY="5580..."          # Pixabay background asset downloader
+
+# --- AWS Infrastructure ---
+AWS_ACCESS_KEY_ID="AKIA..."
+AWS_SECRET_ACCESS_KEY="wRex..."
+BUCKET_NAME="remotionlambda-..."   # S3 storage bucket name
+SERVE_URL="https://..."            # Deployment URL of Remotion site bundle
+FUNCTION_NAME="remotion-render..."  # Lambda function identifier
+
+# --- Database Integration ---
+SUPABASE_URL="https://..."
+SUPABASE_KEY="sb_publishable_..."  # DB access credentials
+
+# --- Telemetry & Notifications (Discord Webhooks) ---
+DISCORD_WEBHOOK_URL="https://..."
+WEBHOOK_LOGS="https://..."
+WEBHOOK_ERRORS="https://..."
+WEBHOOK_POSTS="https://..."
+WEBHOOK_INSIGHTS="https://..."
+WEBHOOK_QUEUE="https://..."
+DISCORD_PING_USER_ID="8989..."     # Discord User ID to ping on alerts
+
+# --- Google Drive Asset Folders ---
+PARKOUR_FOLDER_ID="1-uHR..."
+SFX_FOLDER_ID="10qRI..."
+BGM_FOLDER_ID="16Xk-..."
+GAMING_BGM_FOLDER_ID="16Xk-..."
+GENERAL_BGM_FOLDER_ID="16Xk-..."
+SCIENCE_BROLL_FOLDER_ID="1nfW..."
+HISTORY_BROLL_FOLDER_ID="1D_u..."
+
+# --- Meta API (Facebook & Instagram syndication) ---
+META_PAGE_ACCESS_TOKEN="EAAX..."
+META_PAGE_ID="11368..."
+META_INSTAGRAM_ID="1784..."
 ```
 
 ---
@@ -148,29 +219,61 @@ Clone the repository and install all required system and project dependencies:
 git clone https://github.com/Hazy019/youtube-shorts-automation.git
 cd youtube-shorts-automation
 
-# Install dependencies
+# Install Python backend dependencies
 pip install -r requirements.txt
 
 # Ensure FFmpeg is installed on your local path (vital for b-roll trimming)
 ffmpeg -version
 ```
 
-### 2. Remotion Site S3 Bundle Deployment
+### 2. Running the Visual Landing Page & Dashboard
+To spin up the Next.js frontend local server:
+```powershell
+cd frontend
+
+# Install Node dependencies
+npm install --legacy-peer-deps
+
+# Start development dashboard
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### 3. Remotion Site S3 Bundle Deployment
 If you make changes to the React composition ([Composition.tsx](file:///r:/kyrell/Testing/youtube-shorts-automator/hazy-remotion-cloud/src/Composition.tsx)), you must redeploy the compiled bundle to your AWS S3 bucket:
 ```powershell
 cd hazy-remotion-cloud
+
+# Install dependencies
+npm install
 
 # Deploy to S3
 npx remotion lambda sites create src/index.ts --site-name=hazy-factory --entry=src/index.ts
 ```
 
-### 3. Dry-Run Self-Recovery Test
-Verify your database state and ensure the autonomous self-healing recovery can detect failed runs:
-```powershell
-python tools/test_recovery_detection.py
-```
+### 4. Diagnostics & Verification Tools
+Use the utility scripts in the `tools/` directory to manage and test the orchestrator:
 
-### 4. Direct Manual Pipeline Launch
+*   **API Verification:**
+    ```powershell
+    python tools/verify_apis.py
+    ```
+*   **OAuth Token Refreshes:**
+    ```powershell
+    python tools/update_tokens.py
+    ```
+*   **TikTok Cookie Capturer & Syncer:**
+    ```powershell
+    python tools/capture_tiktok_cookies.py
+    python tools/verify_tiktok_sync.py
+    ```
+*   **Supabase Recovery & Self-Healing Dry-run:**
+    ```powershell
+    python tools/test_recovery_detection.py
+    python tools/test_self_healing.py
+    ```
+
+### 5. Direct Manual Pipeline Launch
 Trigger the full generation, render, and syndication pipeline manually:
 ```powershell
 python run_factory.py
