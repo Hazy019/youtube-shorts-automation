@@ -342,8 +342,8 @@ def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
                 used_ids = {str(c["file_id"]) for c in used.data}
                 fresh_videos = [v for v in videos if str(v.get("id")) not in used_ids]
                 if not fresh_videos:
-                    print(f"  All {len(videos)} Pexels videos on this page were used. Proceeding with variety.")
-                    fresh_videos = videos
+                    print(f"  Notice: All {len(videos)} Pexels clips for '{keyword}' were used previously. Triggering backup keyword fallback.")
+                    return []
                 videos = fresh_videos
             except Exception as e:
                 print(f"  Pexels dedup warning: {e}")

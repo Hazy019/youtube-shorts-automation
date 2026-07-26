@@ -230,10 +230,13 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
         
         topic = full_package['topic']
         search_keyword = full_package['search_keyword']
+        pinned_comment = full_package.get('pinned_comment', '')
         viral_package = full_package
 
         print(f"Topic acquired: {topic}")
         print(f"B-Roll Keyword: {search_keyword}")
+        if pinned_comment:
+            print(f"📌 Pinned Comment: {pinned_comment}")
 
     except Exception as e:
         msg = f"Gemini Error: {str(e)}"

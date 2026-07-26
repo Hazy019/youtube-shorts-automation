@@ -138,11 +138,13 @@ def clean_json_response(text):
 
 def validate_full_package(data):
     required = ["topic", "search_keyword", "backup_keywords", "title",
-                "description", "segments", "tags"]
+                "description", "segments", "tags", "pinned_comment"]
     if not all(k in data for k in required):
         return False, f"Missing keys — found {list(data.keys())}"
     if not isinstance(data.get("backup_keywords", []), list):
         return False, "backup_keywords must be a list"
+    if not isinstance(data.get("pinned_comment"), str) or not data["pinned_comment"].strip():
+        return False, "pinned_comment must be a non-empty string"
     if not isinstance(data["segments"], list) or len(data["segments"]) < 5:
         return False, f"Need >=5 segments, got {len(data.get('segments', []))}"
     seg_keys = ["start", "end", "text", "voiceover",
@@ -228,11 +230,12 @@ def fetch_used_topics():
 
 _JSON_SCHEMA_EXAMPLE = """{
   "topic": "[DYNAMIC_TOPIC_HERE]",
-  "search_keyword": "Parkour",
-  "backup_keywords": ["Urban Freerunning", "City Rooftop"],
+  "search_keyword": "Cyber Security",
+  "backup_keywords": ["Hacker Code", "Server Room"],
   "title": "[CATCHY_VIRAL_TITLE]",
   "description": "A long, SEO-optimized description that starts with a US-centric hook...",
-  "tags": ["shorts","us-trends","gaming","facts","mind blown","actually crazy","retro gaming","history","explained"],
+  "pinned_comment": "[WRITE A SPECIFIC TRIVIA FACT OR HIGH-ENGAGEMENT DISCUSSION QUESTION LINKED EXACTLY TO THIS TOPIC. NEVER USE GENERIC 'WHICH PART SHOCKED YOU?' PHRASES.]",
+  "tags": ["shorts","us-trends","cybersecurity","tech secrets","facts","mind blown","actually crazy","history","explained"],
   "segments": [
     {
       "start": 0.0,
@@ -390,13 +393,12 @@ R12. SEGMENT 0 (Hook):
      - text_effect = "pop", position = "top"
      - Voiceover max 15 words with an ellipsis mid-sentence for breath
      - MUST synthesize a UNIQUE hook based on the topic. NEVER use a generic template.
-     - HOOK FORMULA: [Pattern Interrupt] + [High Stakes Claim] + [Unsolved Mystery].
-     - EXAMPLES OF TONE (Do not copy these, use the VIBE):
-       "Everyone thinks [X] is true, but the reality is terrifying..."
-       "I shouldn't be telling you this, but they just found [X]..."
-       "This feels illegal to know, but [X] has been hidden for decades..."
-       "Nobody noticed for ten years, but [X] was right in front of us..."
-     - Every hook MUST be specific to the video's actual topic. If the topic is about Space, the hook MUST mention space/cosmos/NASA immediately.
+     - VARY THE HOOK ARCHETYPE EVERY SINGLE VIDEO (Rotate between these 4 formulas):
+       1. REVERSE LOGIC: "Everyone assumes [X] is safe, but in 2021 a single zero-day..."
+       2. SECRET DISCLOSURE: "A classified document just proved that [X] was..."
+       3. HIGH STAKES LOSS: "A tiny 1-line coding glitch wiped out [X] in seconds..."
+       4. HISTORICAL PARADOX: "In 1998, a man accidentally hacked [X] using..."
+     - Every hook MUST be specific to the video's actual topic. If the topic is about Cybersecurity, the hook MUST mention hacking/servers/zero-day immediately.
 R13. SEGMENT 1 (Tease):
      - text_effect = "typewriter", position = "center"
      - Must contain "stay till the end" or equivalent retention phrase
@@ -407,7 +409,11 @@ R14. LAST SEGMENT (CTA):
      - ROTATE the CTA phrase.
 R15. search_keyword: {keyword_hint}
 R16. backup_keywords: list of 2 alternative Pexels search terms.
-R17. TOPIC FORMULA — use one of these proven high-retention structures.
+R17. pinned_comment:
+     - MUST provide a unique bonus trivia fact or a specific high-engagement question tailored to the video topic.
+     - FORBIDDEN: Do NOT write generic "Which part shocked you?" or "Comment below".
+     - GOOD: "Fun fact: The $81M heist was caught because the hackers misspelled 'foundation' as 'fandation'! Would you have noticed?"
+R18. TOPIC FORMULA — use one of these proven high-retention structures.
 
 Return ONLY the JSON object. No preamble, no markdown, no explanation.
 """
@@ -436,20 +442,21 @@ def generate_full_package(category, local_excludes=None):
     feedback     = fetch_analytics_feedback()
 
     if category == "us-centric":
-        theme        = "High-energy US-centric facts, cultural anomalies, and American history with relatable humor and slang."
+        theme        = "High-energy US & Tech stories: Cybersecurity mysteries, dark web heists, rogue AI glitches, financial anomalies, and secret American history."
         examples     = (
-            "- The secret physics of the Great Molasses Flood that shut down Boston...\\n"
-            "- Why the US government actually tried to outlaw pinball for 30 years...\\n"
-            "- The hidden US law that makes it illegal to collect rainwater in some states...\\n"
-            "- The American-centric hook: 'Imagine a sticky situation so bad, it shut down a whole city...'\\n"
-            "- The untold story of why US milk cartons used to have missing person photos..."
+            "- How a single zero-day bug shut down a major US oil pipeline for 6 days...\\n"
+            "- The mystery of the guy who threw away a hard drive with $500M in Bitcoin into a landfill...\\n"
+            "- How hackers used a connected aquarium thermometer to rob a US casino's database...\\n"
+            "- The 1987 ATM glitch in Chicago that let people withdraw unlimited cash for 4 hours...\\n"
+            "- Why the US government actually tried to outlaw pinball machines for 30 years...\\n"
+            "- The classified code glitch that almost started an accidental nuclear response in 1983..."
         )
-        keyword_hint = 'Return a 2-3 word Pexels/Pixabay search term matching a US city, landmark, cultural item, or historical setting (e.g., "Times Square Night", "American Flag", "Capitol Building", "New Orleans Jazz"). Be specific — avoid generic terms.'
-        sfx_style    = "punchy, urban, modern US style — pop and whoosh"
-        pace_guide   = "High energy. Use US slang and cultural references. Hook must be relatable to American experiences."
+        keyword_hint = 'Return a 2-3 word Pexels/Pixabay search term matching the exact subject (e.g., "Cyber Security", "Hacker Code", "Server Room", "Matrix Code", "Bank Vault", "American Flag", "New York Night"). Be specific to the topic — avoid generic terms like Parkour.'
+        sfx_style    = "punchy, tech, modern US style — digital glitch, pop, and bass drops"
+        pace_guide   = "High energy. Use US slang, tech terminology, and suspenseful pacing. Hook must grab attention in the first 2 seconds."
         
         # Inject the specific user feedback for US retention
-        feedback += "\nUS RETENTION STRATEGY: Inject relatable US cultural references and language. Instead of generic hooks, tailor them to American experiences and humor. Use hooks like: 'Imagine a sticky situation so bad, it shut down a whole city... no, not rush hour traffic...'"
+        feedback += "\nUS & TECH RETENTION STRATEGY: Focus on Cybersecurity, Tech Heists, Rogue Code, and Bizarre US Anomalies. Use distinct hook archetypes (Reverse Logic, Secret Disclosure, High Stakes Loss). Never leave the core mystery unanswered!"
     else:
         theme        = "DEEPLY OBSCURE and MIND-BLOWING science, history, and psychology. NO SURFACE-LEVEL TRIVIA. The facts must be so niche and thoroughly researched that even experts would be surprised. DO NOT generate 'AI slop' listicles."
         examples     = (
