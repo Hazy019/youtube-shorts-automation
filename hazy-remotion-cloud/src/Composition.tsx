@@ -18,7 +18,7 @@ interface Segment {
   start: number;
   end: number;
   text: string;
-  text_effect?: 'pop' | 'glitch' | 'typewriter';
+  text_effect?: 'pop' | 'glitch' | 'typewriter' | 'bounce' | 'glow' | 'slide';
   position?: 'top' | 'center' | 'bottom';
   highlight_word?: string;
 }
@@ -37,7 +37,7 @@ const ProgressBar: React.FC = () => {
     extrapolateRight: 'clamp',
   });
   return (
-    <AbsoluteFill style={{ height: '6px', top: 0, backgroundColor: 'rgba(255,215,0,0.20)' }}>
+    <AbsoluteFill style={{ height: '6px', top: 0, backgroundColor: 'rgba(255,215,0,0.20)', zIndex: 10 }}>
       <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg, #FFD700, #FFA500)' }} />
     </AbsoluteFill>
   );
@@ -65,10 +65,43 @@ const CRTOverlay: React.FC = () => (
   />
 );
 
+// ── Cyber HUD Overlay — US / Cybersecurity Category ──────────────────────────
+const CyberHUDOverlay: React.FC = () => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame % 90, [0, 45, 90], [0.35, 0.75, 0.35]);
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none', zIndex: 3, opacity }}>
+      {/* Corner Tech Reticles */}
+      <svg width="100%" height="100%" style={{ position: 'absolute', top: 0, left: 0 }}>
+        <path d="M 30,60 L 30,30 L 60,30" fill="none" stroke="#00F0FF" strokeWidth="3" />
+        <path d="M 1050,60 L 1050,30 L 1020,30" fill="none" stroke="#00F0FF" strokeWidth="3" opacity="0.7" />
+        <path d="M 30,1860 L 30,1890 L 60,1890" fill="none" stroke="#00F0FF" strokeWidth="3" opacity="0.7" />
+        <path d="M 1050,1860 L 1050,1890 L 1020,1890" fill="none" stroke="#00F0FF" strokeWidth="3" opacity="0.7" />
+      </svg>
+    </AbsoluteFill>
+  );
+};
+
+// ── Cinematic Light Leak flare overlay ────────────────────────────────────────
+const CinematicLightLeak: React.FC<{ clipIndex: number }> = ({ clipIndex }) => {
+  const frame = useCurrentFrame();
+  const xPos = interpolate(frame % 60, [0, 60], [-50, 150]);
+  const opacity = interpolate(frame % 60, [0, 30, 60], [0, 0.18, 0]);
+  const color = clipIndex % 2 === 0 ? 'rgba(0, 240, 255, 0.25)' : 'rgba(255, 215, 0, 0.25)';
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: `radial-gradient(circle at ${xPos}% 20%, ${color} 0%, transparent 60%)`,
+        pointerEvents: 'none',
+        zIndex: 4,
+        opacity,
+      }}
+    />
+  );
+};
+
 // ── HOOK OVERLAY — Category-Aware ────────────────────────────────────────────
-// Gaming:   Retro "CLASSIFIED" stamp (kept — matches aesthetic)
-// General:  Animated data/stats bar (cinematic, modern)
-// US:       Breaking news flash (relatable American format)
 const HookOverlay: React.FC<{ fps: number; category: string }> = ({ fps, category }) => {
   const frame = useCurrentFrame();
   if (frame > 2.5 * fps) return null;
@@ -79,7 +112,6 @@ const HookOverlay: React.FC<{ fps: number; category: string }> = ({ fps, categor
   });
 
   if (category === 'gaming') {
-    // Flashing CLASSIFIED stamp — fits retro gaming aesthetic
     const isVisible = frame % 15 < 10;
     return isVisible ? (
       <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', pointerEvents: 'none', zIndex: 4, top: '-25%' }}>
@@ -102,7 +134,6 @@ const HookOverlay: React.FC<{ fps: number; category: string }> = ({ fps, categor
   }
 
   if (category === 'us-centric') {
-    // Breaking News ticker flash — relatable to US audience
     return (
       <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'flex-start', pointerEvents: 'none', zIndex: 4, flexDirection: 'column', padding: '0 0 120px 0' }}>
         <div style={{
@@ -137,7 +168,6 @@ const HookOverlay: React.FC<{ fps: number; category: string }> = ({ fps, categor
     );
   }
 
-  // General / Science / History — animated data/fact badge
   return (
     <AbsoluteFill style={{ justifyContent: 'flex-start', alignItems: 'center', pointerEvents: 'none', zIndex: 4, paddingTop: '80px' }}>
       <div style={{
@@ -160,17 +190,18 @@ const HookOverlay: React.FC<{ fps: number; category: string }> = ({ fps, categor
   );
 };
 
-// ── Background video clip ─────────────────────────────────────────────────────
+// ── Background video clip with dynamic transitions ───────────────────────────
 const ZoomingVideo: React.FC<{
   url: string;
   effects: EditorEffects;
   clipDuration: number;
   renderSeed: number;
-}> = ({ url, effects, clipDuration, renderSeed }) => {
+  clipIndex?: number;
+}> = ({ url, effects, clipDuration, renderSeed, clipIndex = 0 }) => {
   const frame = useCurrentFrame();
   
-  // PRO MOVE: Randomized Ken Burns Direction (In vs Out) based on renderSeed + URL
-  const zoomDirection = random(url + renderSeed) > 0.5 ? 1 : -1;
+  // PRO MOVE: Alternate Ken Burns direction per clip
+  const zoomDirection = clipIndex % 2 === 0 ? 1 : -1;
   const startScale = zoomDirection === 1 ? 1.0 : 1.15;
   const endScale = zoomDirection === 1 ? 1.15 : 1.0;
   
@@ -178,20 +209,14 @@ const ZoomingVideo: React.FC<{
     ? interpolate(frame, [0, clipDuration], [startScale, endScale], { extrapolateRight: 'clamp' }) 
     : 1.05;
 
-  // Cinematic Drift: Slow horizontal movement
-  const driftDirection = random(url + "drift" + renderSeed) > 0.5 ? 1 : -1;
+  const driftDirection = clipIndex % 2 === 0 ? 1 : -1;
   const driftX = interpolate(frame, [0, clipDuration], [0, 25 * driftDirection]);
-
   const shakeX = frame < 8 && random(url + renderSeed) > 0.5 ? Math.sin(frame * 2) * 6 : 0;
 
+  // Transition handling: Fade vs Flash vs Directional Whip
   const opacity =
     effects?.transition === 'fade'
-      ? interpolate(
-          frame,
-          [0, 10, clipDuration - 10, clipDuration],
-          [0, 1, 1, 0],
-          { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
-        )
+      ? interpolate(frame, [0, 8, clipDuration - 8, clipDuration], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
       : 1;
 
   const flashOpacity =
@@ -201,49 +226,82 @@ const ZoomingVideo: React.FC<{
 
   return (
     <AbsoluteFill style={{ transform: `scale(${scale}) translateX(${shakeX + driftX}px)`, opacity }}>
-      {/* Background Dimmer — PRO MOVE: Ensures text readability without a harsh black box */}
       <AbsoluteFill style={{ backgroundColor: 'black', opacity: 0.15, zIndex: 1 }} />
       <OffthreadVideo
         src={url}
         muted
-        loop
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
       />
+      <CinematicLightLeak clipIndex={clipIndex} />
       <AbsoluteFill style={{ backgroundColor: 'white', opacity: flashOpacity, zIndex: 5 }} />
     </AbsoluteFill>
   );
 };
 
-// ── Caption text with dynamic sizing + highlight word ────────────────────────
-// IMPROVED: Highlight word now renders GOLD (#FFD700) instead of red for
-// better readability on mobile and a more premium brand look.
+// ── Caption text with 6 Cycled Animation Archetypes ───────────────────────────
 const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
   segment,
 }) => {
   const frame = useCurrentFrame();
-  const pop = spring({ frame, fps: 30, config: { damping: 12, stiffness: 200 } });
 
-  const isGlitching = segment.text_effect === 'glitch' && frame % 12 > 9;
+  // 1. POP: High-stiffness spring scale
+  const popScale = spring({ frame, fps: 30, config: { damping: 12, stiffness: 220 } });
+
+  // 2. BOUNCE: Vertical drop with rubber spring overshoot
+  const bounceY = interpolate(
+    spring({ frame, fps: 30, config: { damping: 10, stiffness: 180 } }),
+    [0, 1],
+    [-70, 0],
+    { extrapolateRight: 'clamp' }
+  );
+
+  // 3. GLITCH: RGB split offset + micro shake
+  const isGlitching = segment.text_effect === 'glitch' && frame % 10 > 7;
   const glitchX = isGlitching ? random(frame) * 12 - 6 : 0;
-
-  // Fact-reveal shake: a subtle horizontal shake on glitch segments at frame 0-8
   const factShakeX = segment.text_effect === 'glitch'
     ? interpolate(frame, [0, 4, 8, 12], [6, -6, 3, 0], { extrapolateRight: 'clamp' })
     : 0;
 
-  // Typewriter effect: reveal characters over 30 frames
+  // 4. TYPEWRITER: Monospace character reveal
   const chars = segment.text.length;
-  const revealed = Math.floor(interpolate(frame, [0, 30], [0, chars], { extrapolateRight: 'clamp' }));
+  const revealed = Math.floor(interpolate(frame, [0, 25], [0, chars], { extrapolateRight: 'clamp' }));
   const displayText = segment.text_effect === 'typewriter' ? segment.text.slice(0, revealed) : segment.text;
-  const cursor = segment.text_effect === 'typewriter' && frame % 15 < 7 ? '_' : '';
+  const cursor = segment.text_effect === 'typewriter' && frame % 14 < 7 ? '_' : '';
 
-  // Dynamic font size — prevents overflow on long captions
+  // 5. GLOW: Pulsing neon cyan/gold outline shadow
+  const glowIntensity = interpolate(frame % 24, [0, 12, 24], [10, 30, 10]);
+
+  // 6. SLIDE: Horizontal whip slide with motion blur opacity
+  const slideX = interpolate(frame, [0, 6], [-120, 0], { extrapolateRight: 'clamp' });
+  const slideOpacity = interpolate(frame, [0, 5], [0, 1], { extrapolateRight: 'clamp' });
+
+  // Dynamic font sizing
   const words = displayText.split(' ').filter(w => w.length > 0);
   const wordCount = words.length;
   const maxCharInWord = words.length > 0 ? Math.max(...words.map(w => w.length)) : 1;
   const dynamicSize = maxCharInWord > 12 ? 80 : maxCharInWord > 9 ? 95 : wordCount > 2 ? 105 : 125;
 
   const yPos = segment.position === 'top' ? '10%' : segment.position === 'bottom' ? '72%' : '48%';
+
+  // Determine transform & style per effect
+  let transformStyle = `scale(${popScale})`;
+  let opacityStyle = 1;
+  let textShadowStyle = '0px 8px 28px rgba(0,0,0,0.98)';
+
+  const effect = segment.text_effect ?? 'pop';
+
+  if (effect === 'bounce') {
+    transformStyle = `translateY(${bounceY}px)`;
+  } else if (effect === 'glitch') {
+    transformStyle = `translateX(${glitchX + factShakeX}px)`;
+    textShadowStyle = isGlitching ? '4px 0px 0px #0FF, -4px 0px 0px #F0F' : '0px 8px 28px rgba(0,0,0,0.98)';
+  } else if (effect === 'glow') {
+    transformStyle = `scale(${popScale})`;
+    textShadowStyle = `0 0 ${glowIntensity}px #00F0FF, 0 0 40px rgba(0,240,255,0.6), 0px 8px 28px rgba(0,0,0,0.98)`;
+  } else if (effect === 'slide') {
+    transformStyle = `translateX(${slideX}px)`;
+    opacityStyle = slideOpacity;
+  }
 
   return (
     <AbsoluteFill
@@ -252,12 +310,9 @@ const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
         alignItems: 'center',
         padding: '0 50px',
         top: yPos,
-        // PRO MOVE: Safety Bounding Box
-        // Ensures center text never 'bleeds' into the karaoke zone at the bottom
         maxHeight: '25%', 
         height: 'auto',
-        transform: `translateX(${factShakeX}px)`,
-        overflow: 'hidden', // Final safety: crop instead of overlap
+        overflow: 'hidden',
       }}
     >
       <h1
@@ -268,12 +323,9 @@ const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
           fontFamily,
           textTransform: 'uppercase',
           WebkitTextStroke: '3px #000',
-          textShadow: isGlitching
-            ? '4px 0px 0px #0ff, -4px 0px 0px #f0f'
-            : '0px 8px 28px rgba(0,0,0,0.98)',
-          transform: segment.text_effect === 'pop'
-            ? `scale(${pop})`
-            : `translateX(${glitchX}px)`,
+          textShadow: textShadowStyle,
+          transform: transformStyle,
+          opacity: opacityStyle,
           display: 'flex',
           flexWrap: 'wrap',
           justifyContent: 'center',
@@ -285,7 +337,6 @@ const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
           <span
             key={i}
             style={{
-              // GOLD highlight word — more premium and readable on mobile than red
               color: word.toUpperCase() === segment.highlight_word?.toUpperCase()
                 ? '#FFD700'
                 : '#FFFFFF',
@@ -454,6 +505,7 @@ export const MyComp: React.FC<{
                 effects={effects}
                 clipDuration={framesPerClip}
                 renderSeed={renderSeed}
+                clipIndex={i}
               />
             </Series.Sequence>
           ))}
@@ -461,8 +513,8 @@ export const MyComp: React.FC<{
 
         {/* Cinematic overlays */}
         <Vignette />
-        {/* CRT only for gaming — doesn't match science/history aesthetic */}
         {category === 'gaming' && <CRTOverlay />}
+        {category === 'us-centric' && <CyberHUDOverlay />}
         <ProgressBar />
         <HookOverlay fps={fps} category={category} />
 

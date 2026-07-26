@@ -149,7 +149,7 @@ def validate_full_package(data):
         return False, f"Need >=5 segments, got {len(data.get('segments', []))}"
     seg_keys = ["start", "end", "text", "voiceover",
                 "text_effect", "position", "highlight_word"]
-    valid_effects = ("pop", "glitch", "typewriter")
+    valid_effects = ("pop", "glitch", "typewriter", "bounce", "glow", "slide")
     
     # ── Duration & Hook Validation ──────────────────────────────────────────
     for i, s in enumerate(data["segments"]):
@@ -385,7 +385,7 @@ R6.  TOTAL WORD COUNT LIMIT: 100 to 115 words total across all segments.
      Match start/end timing exactly. Each segment.end must equal next segment.start.
 R7.  text (on-screen caption): 1-3 WORDS ONLY. Never a full sentence.
 R8.  voiceover and text say DIFFERENT things. Caption = punchline/label. Voiceover = explanation.
-R9.  text_effect: "pop" = confident reveal, "glitch" = shocking fact, "typewriter" = tension.
+R9.  text_effect: CYCLE text effects across segments! Choose from: "pop" (spring zoom), "glitch" (cyber split), "typewriter" (terminal reveal), "bounce" (vertical drop), "glow" (neon aura), "slide" (whip slide). Vary the effect for each segment!
 R10. position: "top" or "center" for body segments. "bottom" for CTA only.
 R11. highlight_word: one exact word from text. Renders WHITE. Others render gold.
 R12. SEGMENT 0 (Hook):
