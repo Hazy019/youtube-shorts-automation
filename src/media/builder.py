@@ -120,6 +120,45 @@ def _do_render(client, params):
         time.sleep(POLL_INTERVAL)
 
 
+def _do_local_render(input_props, total_frames, output_path="temp_render_local.mp4"):
+    """
+    Renders video locally using Remotion CLI to save 100% of AWS Lambda GB-Seconds.
+    """
+    import subprocess
+    import json
+    import sys
+
+    print("\n  ⚡ [LOCAL RENDER ENGINE] Rendering locally via Remotion CLI (Zero AWS Lambda Cost)...", flush=True)
+    try:
+        props_str = json.dumps(input_props)
+        out_file = os.path.abspath(output_path)
+        cmd = [
+            "npx", "remotion", "render",
+            "src/index.ts", "MyComp",
+            out_file,
+            f"--props={props_str}",
+            f"--frames=0-{total_frames-1}",
+            "--overwrite"
+        ]
+        res = subprocess.run(
+            cmd,
+            cwd="hazy-remotion-cloud",
+            shell=True if sys.platform == "win32" else False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8"
+        )
+        if res.returncode == 0 and os.path.exists(out_file):
+            print(f"  ✓ Local render complete: {out_file}", flush=True)
+            return out_file, None
+        else:
+            err = f"Local render process failed: {res.stderr[:400] if res.stderr else res.stdout[:400]}"
+            print(f"  ❌ {err}", flush=True)
+            return None, err
+    except Exception as e:
+        return None, f"Local render exception: {e}"
+
+
 def make_cloud_video(
     voice_url,
     background_urls,
@@ -132,12 +171,13 @@ def make_cloud_video(
     word_timestamps=None,
 ):
     """
-    Render a video on AWS Lambda using single-chunk mode (no stitcher).
+    Render a video using AWS Lambda or Local Remotion CLI fallback.
     Returns: (output_url: str | None, error_msg: str | None)
     """
     global SERVE_URL
-    if not SERVE_URL:
-        return None, "SERVE_URL is not configured"
+    render_mode = os.getenv("RENDER_MODE", "cloud").lower()
+    use_local   = os.getenv("USE_LOCAL_RENDER", "").lower() in ["true", "1", "yes"]
+
     if not background_urls:
         return None, "No background video URLs provided"
 
@@ -174,7 +214,14 @@ def make_cloud_video(
         },
     }
 
-    # NOTE: concurrency_per_lambda is intentionally OMITTED so Remotion uses
+    # COST-CONTAINMENT SAFEGUARD: Direct local rendering toggle to preserve AWS Free Tier
+    if render_mode == "local" or use_local or not SERVE_URL:
+        if not SERVE_URL and not (render_mode == "local" or use_local):
+            print("  [NOTICE] SERVE_URL not configured. Automatically routing to Local Remotion Render engine...", flush=True)
+        local_path, local_err = _do_local_render(input_props, total_frames, f"temp_render_{category}.mp4")
+        if local_path:
+            return local_path, None
+        return None, f"Local render failed: {local_err}"
     # all available CPU threads in the 3GB Lambda. This is ~4x faster per chunk
     # than the old concurrency_per_lambda=1 setting.
     params = RenderMediaParams(

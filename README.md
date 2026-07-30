@@ -15,7 +15,7 @@ YouTube Shorts Automation is a state-of-the-art, fully autonomous programmatic v
 
 ## 🏗️ System Architecture & How It Works
 
-The following diagram maps the absolute execution flow of the system from initial startup and self-healing DB checks to parallel serverless rendering, platform syndication, and automatic resource teardown.
+The following diagram maps the absolute execution flow of the system across its **Hybrid Compute Engine**, allowing seamless switching between zero-cost local rendering and serverless cloud parallel processing.
 
 ```mermaid
 graph TD
@@ -27,22 +27,34 @@ graph TD
     E --> F
     F --> G[B-Roll Sourcing: assets.py]
     G -->|Free Pexels/Pixabay API| H[Trimming via FFmpeg: duration/clips + buffer]
-    H --> I[Upload Assets to AWS S3]
-    I --> J[Orchestrate Cloud Render: builder.py]
-    J -->|Chunking: min total, 300f| K[Invoke AWS Lambda Workers in Parallel]
-    K -->|OffthreadVideo frame extraction| L[Render chunks & Stitch on Lambda]
-    L --> M[Assemble final video in S3]
-    M --> N[Parallel syndication: YouTube, TikTok, Facebook, Instagram]
+    H --> I{Render Mode Check}
+    I -->|RENDER_MODE=local or --local| J1[Local Remotion CLI Engine - $0 AWS Cost]
+    I -->|RENDER_MODE=cloud or --cloud| J2[Upload Assets to AWS S3 & Invoke Lambda Workers]
+    J1 --> M[Assemble final video locally]
+    J2 -->|Parallel 300f Chunks| L[Render & Stitch on AWS Lambda]
+    L --> M
+    M --> N[Parallel Syndication: YouTube, TikTok, Facebook, Instagram]
     N --> O[Telemetry: Post completion to Discord webhooks]
-    O --> P[S3 asset cleanup: Delete temp backgrounds/audio]
+    O --> P[Asset cleanup: Purge temp backgrounds/audio]
 ```
 
-### The Generation Process:
-1. **Script & Metadata Generation**: The orchestrator triggers Google's Gemini Flash model (utilizing the free tier) to write a highly engaging script, generate optimized search keywords for background footage, and write viral titles and descriptions.
-2. **Audio Synthesis**: Microsoft Edge-TTS translates the generated text into natural-sounding speech while providing precise word-level timestamps used for dynamic on-screen captions.
-3. **Asset Sourcing**: The system queries free stock footage platforms (Pexels, Pixabay) using the generated keywords to download relevant, high-quality background video clips.
-4. **Cloud Rendering**: Using Remotion and AWS Lambda, the visual layout (captions, backgrounds, transitions) is rendered in parallel chunks, ensuring rapid generation times.
-5. **Syndication**: The completed video is then automatically distributed across connected social media accounts via their respective APIs.
+### The 13 System Architecture Pillars
+
+The platform is designed around 13 core enterprise architecture pillars ensuring high performance, zero downtime, and complete cost containment:
+
+1. **Orchestration / Control Plane**: `run_factory.py` coordinates multi-stage pipelines, retries, and API routing.
+2. **State Management & Persistence**: Supabase PostgreSQL tracks video status (`pending` → `script_ready` → `audio_ready` → `video_ready` → `SUCCESS`).
+3. **Idempotency & Deduplication**: Hash checks & unique video IDs prevent duplicate processing across multi-platform feeds.
+4. **Stateful Self-Healing Recovery**: Dual-layered local failsafe JSON and database record recovery resume interrupted tasks without wasting AI tokens.
+5. **Decoupled Asset Sourcing**: Automatic asset fetching via Pexels/Pixabay with precise FFmpeg budget trimming.
+6. **Distributed Serverless Compute**: Remotion on AWS Lambda for massive parallel chunk rendering.
+7. **Asset Storage Hygiene**: AWS S3 pre-signed URL fetching and automatic post-upload object purging.
+8. **Multi-Platform Syndication Engine**: Native platform API callers for YouTube, TikTok, Facebook Reels, and Instagram Reels.
+9. **Telemetry & Real-Time Alerting**: Discord multi-webhook alerting feeds for logs, errors, posts, insights, and queue metrics.
+10. **Automated CI/CD Scheduler**: GitHub Actions (`factory.yml`, `analytics.yml`, `meta_recovery.yml`) execute pipelines on traffic-peaked cron schedules.
+11. **Secrets Isolation & Security**: Environment variables (`.env`) and encrypted GitHub secrets isolate all API credentials.
+12. **Anti-Slop AI Prompting Engine**: Gemini 3 Flash system prompts with Edge-TTS karaoke word alignment for maximum retention.
+13. **Cost-Containment & Hybrid Compute Engine**: Toggle between Zero-Cost Local GPU Rendering (`python run_factory.py --local`) and AWS Lambda Cloud Rendering (`python run_factory.py --cloud`).
 
 ---
 
@@ -55,7 +67,7 @@ graph TD
 | **Intelligence** | `Google Gemini 3 Flash` | Synthesize structured scripts, viral titles, and visual search parameters (Free API) |
 | **Audio** | `Microsoft Edge-TTS` | High-fidelity neural speech synthesis with precise word-boundary timestamps for karaoke captions |
 | **Graphics** | `Remotion (React / TS)` | Programmatic canvas drawing, camera transitions, and visual layer management |
-| **Rendering** | `AWS Lambda` | Serverless cluster execution; processes up to 100+ concurrent rendering chunks |
+| **Hybrid Rendering** | `Remotion CLI (Local) / AWS Lambda (Cloud)` | Zero-cost local GPU execution or serverless parallel cluster execution |
 | **Asset Storage** | `AWS S3` | Fast pre-signed URL media fetching and final product distribution |
 | **State Layer** | `Supabase` | PostgreSQL database storing video status, timing payloads, and platform syndication logs |
 | **Telemetry** | `Discord Webhooks` | Granular push notifications detailing queue status, execution performance, and error stacktraces |
@@ -274,10 +286,19 @@ Use the utility scripts in the `tools/` directory to manage and test the orchest
     ```
 
 ### 5. Direct Manual Pipeline Launch
-Trigger the full generation, render, and syndication pipeline manually:
+
+Trigger the full generation, render, and syndication pipeline manually using the **Hybrid Render Engine**:
+
 ```powershell
-python run_factory.py
+# 1. Zero-Cost Local Mode (Renders via local CPU/GPU using Remotion CLI - $0 AWS Cost)
+python run_factory.py --local
+
+# 2. Cloud Serverless Mode (Renders via AWS Lambda parallel workers)
+python run_factory.py --cloud
 ```
+
+> [!TIP]
+> You can also set `RENDER_MODE="local"` or `RENDER_MODE="cloud"` inside your `.env` file to set the default behavior.
 
 ---
 *Engineered for absolute scale, performance, and cross-platform automation.*

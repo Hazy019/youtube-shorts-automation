@@ -28,9 +28,11 @@ ALLOWED_RENDER_DOMAINS = [
 ]
 
 def validate_render_url(url):
-    """Ensure the render download URL is from a trusted domain."""
+    """Ensure the render download URL is from a trusted domain or local path."""
     if not url:
         return False
+    if os.path.exists(url):
+        return True
     parsed = urlparse(url)
     domain = parsed.netloc.lower()
     # Check if any allowed domain is in the netloc
@@ -38,62 +40,71 @@ def validate_render_url(url):
 
 def check_environment():
     """Verify critical environment variables are present before starting."""
-    required = [
-        "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_KEY", 
-        "BUCKET_NAME", "SERVE_URL",
-        "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"
-    ]
+    # Parse CLI flags
+    if "--local" in sys.argv or "-l" in sys.argv:
+        os.environ["RENDER_MODE"] = "local"
+    elif "--cloud" in sys.argv or "-c" in sys.argv:
+        os.environ["RENDER_MODE"] = "cloud"
+
+    render_mode = os.getenv("RENDER_MODE", "cloud").lower()
+    print(f"🔧 [SYSTEM ARCHITECTURE] Active Render Mode: {render_mode.upper()} ({'Zero AWS Cost / Local GPU' if render_mode == 'local' else 'AWS Lambda Parallel Render'})")
+
+    required = ["GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_KEY"]
+    if render_mode == "cloud":
+        required += ["BUCKET_NAME", "SERVE_URL", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
+
     missing = [k for k in required if not os.getenv(k)]
     if missing:
-        print(f"FATAL: Missing environment variables: {missing}")
+        print(f"FATAL: Missing environment variables for mode '{render_mode}': {missing}")
         sys.exit(1)
     
-    # Pre-flight Validation for Remotion Site
-    serve_url = os.getenv("SERVE_URL")
-    print(f"Validating Remotion Site: {serve_url}")
-    try:
-        # Checking the base URL often returns 200 on AWS S3 even if the bundle is missing.
-        # We append /index.html to ensure the actual Remotion bundle files exist.
-        check_url = f"{serve_url.rstrip('/')}/index.html"
-        r = requests.head(check_url, timeout=10)
-        if r.status_code in [403, 404]:
-            print(f"WARNING: Remotion bundle check ({check_url}) returned {r.status_code}. Site is likely missing.")
-            print("AUTO-HEALING: Triggering Remotion site deployment...")
-            try:
-                print("  -> Installing Node dependencies...")
-                subprocess.run(
-                    ["npm", "install"],
-                    cwd="hazy-remotion-cloud",
-                    shell=True if sys.platform == "win32" else False,
-                    check=True,
-                    stdout=subprocess.DEVNULL
-                )
-                print("  -> Deploying site...")
-                result = subprocess.run(
-                    ["npx", "remotion", "lambda", "sites", "create", "src/index.ts", "--site-name=hazy-factory"],
-                    cwd="hazy-remotion-cloud",
-                    shell=True if sys.platform == "win32" else False,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    check=True
-                )
-                print("AUTO-HEALING SUCCESS: Remotion site redeployed.")
-                
-                match = re.search(r"Serve URL\s+(https://[^\s\x1b]+)", result.stdout)
-                if match:
-                    new_url = match.group(1).replace("/index.html", "")
-                    os.environ["SERVE_URL"] = new_url
-                    print(f"Updated SERVE_URL to: {new_url}")
-            except subprocess.CalledProcessError as e:
-                err_out = getattr(e, "stderr", str(e))
-                print(f"FATAL: Auto-healing failed. Remotion deployment error:\n{err_out}")
-                sys.exit(1)
-        elif r.status_code >= 400:
-            print(f"WARNING: Remotion SERVE_URL returned status {r.status_code}. Continuing anyway.")
-    except Exception as e:
-        print(f"FATAL: Failed to reach Remotion SERVE_URL: {e}")
-        sys.exit(1)
+    # Pre-flight Validation for Remotion Site (only required in cloud mode)
+    if render_mode == "cloud":
+        serve_url = os.getenv("SERVE_URL")
+        print(f"Validating Remotion Site: {serve_url}")
+        try:
+            # Checking the base URL often returns 200 on AWS S3 even if the bundle is missing.
+            # We append /index.html to ensure the actual Remotion bundle files exist.
+            check_url = f"{serve_url.rstrip('/')}/index.html"
+            r = requests.head(check_url, timeout=10)
+            if r.status_code in [403, 404]:
+                print(f"WARNING: Remotion bundle check ({check_url}) returned {r.status_code}. Site is likely missing.")
+                print("AUTO-HEALING: Triggering Remotion site deployment...")
+                try:
+                    print("  -> Installing Node dependencies...")
+                    subprocess.run(
+                        ["npm", "install"],
+                        cwd="hazy-remotion-cloud",
+                        shell=True if sys.platform == "win32" else False,
+                        check=True,
+                        stdout=subprocess.DEVNULL
+                    )
+                    print("  -> Deploying site...")
+                    result = subprocess.run(
+                        ["npx", "remotion", "lambda", "sites", "create", "src/index.ts", "--site-name=hazy-factory"],
+                        cwd="hazy-remotion-cloud",
+                        shell=True if sys.platform == "win32" else False,
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        check=True
+                    )
+                    print("AUTO-HEALING SUCCESS: Remotion site redeployed.")
+                    
+                    match = re.search(r"Serve URL\s+(https://[^\s\x1b]+)", result.stdout)
+                    if match:
+                        new_url = match.group(1).replace("/index.html", "")
+                        os.environ["SERVE_URL"] = new_url
+                        print(f"Updated SERVE_URL to: {new_url}")
+                except subprocess.CalledProcessError as e:
+                    err_out = getattr(e, "stderr", str(e))
+                    print(f"FATAL: Auto-healing failed. Remotion deployment error:\n{err_out}")
+                    sys.exit(1)
+            elif r.status_code >= 400:
+                print(f"WARNING: Remotion SERVE_URL returned status {r.status_code}. Continuing anyway.")
+        except Exception as e:
+            print(f"FATAL: Failed to reach Remotion SERVE_URL: {e}")
+            sys.exit(1)
 
     print("Environment & Site check passed.")
 
@@ -299,20 +310,26 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
             return None, None, False
 
         local_filename = f"temp_render_{category}.mp4"
-        for attempt in range(3):
-            try:
-                r = requests.get(final_video_url, stream=True, timeout=120)
-                r.raise_for_status()
-                with open(local_filename, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                break
-            except Exception as e:
-                print(f"Download error: {e}. Retrying {attempt+1}/3...")
-                time.sleep(3)
-                if attempt == 2:
-                    ping_error(f"Render download failed after 3 attempts: {e}", "Downloader")
-                    return None, None, False
+        if os.path.exists(final_video_url):
+            import shutil
+            if os.path.abspath(final_video_url) != os.path.abspath(local_filename):
+                shutil.copy(final_video_url, local_filename)
+            print(f"  ✓ Using rendered local video: {local_filename}")
+        else:
+            for attempt in range(3):
+                try:
+                    r = requests.get(final_video_url, stream=True, timeout=120)
+                    r.raise_for_status()
+                    with open(local_filename, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    break
+                except Exception as e:
+                    print(f"Download error: {e}. Retrying {attempt+1}/3...")
+                    time.sleep(3)
+                    if attempt == 2:
+                        ping_error(f"Render download failed after 3 attempts: {e}", "Downloader")
+                        return None, None, False
 
         print("\n[STEP 1/2] Initiating YouTube Upload...")
         from src.api.youtube import get_publish_at
