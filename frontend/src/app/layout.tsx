@@ -69,9 +69,9 @@ export const metadata: Metadata = {
     site: "@hazy019",
   },
   icons: {
-    icon: [{ url: "/favicon-adaptive.svg", type: "image/png", sizes: "128x128" }],
-    shortcut: "/favicon-adaptive.svg",
-    apple: "/favicon-adaptive.svg",
+    icon: "/icon.png",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 };
 
