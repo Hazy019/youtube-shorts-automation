@@ -259,9 +259,31 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
             # Check if we have a 'stuck' video in the database for this channel.
             recovery_record = find_recovery_record(category)
             if recovery_record:
-                print(f"♻️  DB RECOVERY: Resuming failed topic: {recovery_record['topic']}")
-                full_package = recovery_record['payload']
-            else:
+                rec_payload = recovery_record.get('payload') or {}
+                attempts = rec_payload.get('_recovery_attempts', 0) + 1
+                rec_payload['_recovery_attempts'] = attempts
+
+                if attempts > 3:
+                    print(f"⚠️  DB POISON PILL DETECTED: Topic '{recovery_record.get('topic')}' failed {attempts} times.")
+                    print("  Archiving stuck row as FAILED_ABANDONED in Supabase and generating a fresh topic...")
+                    try:
+                        with_supabase_retry(
+                            supabase.table("videos").update({"youtube_id": "FAILED_ABANDONED"}).eq("id", recovery_record["id"])
+                        )
+                    except Exception as e:
+                        print(f"  Warning: Failed to update poison pill in Supabase: {e}")
+                    full_package = None
+                else:
+                    print(f"♻️  DB RECOVERY: Resuming failed topic (Attempt {attempts}/3): {recovery_record['topic']}")
+                    try:
+                        with_supabase_retry(
+                            supabase.table("videos").update({"payload": rec_payload}).eq("id", recovery_record["id"])
+                        )
+                    except Exception:
+                        pass
+                    full_package = rec_payload
+
+            if not full_package:
                 print(f"✨ FRESH RUN: Generating new {category} topic with Gemini...")
                 full_package = generate_full_package(category, local_excludes=local_excludes)
                 # Save to local failsafe immediately
@@ -315,12 +337,20 @@ def produce_video(category, local_excludes=None, token_name='token_youtube.json'
         bgm_url = get_bgm_url(category=category)
         temp_keys.append(extract_s3_key(bgm_url))
 
-        # Prevent AWS Lambda waste if local Google Drive API times out (WinError 10060)
-        if not video_urls or not sfx_urls or not bgm_url:
-            err = f"FACTORY HALTED: Local Media Fetch Failed. Missing assets. Videos: {len(video_urls)}, SFX: {len(sfx_urls)}, BGM: {'Yes' if bgm_url else 'No'}."
+        # Robust Asset Validation with Graceful Degradation
+        if not video_urls:
+            err = "FACTORY HALTED: No background video assets acquired."
             print(f"\n{err}")
-            ping_error(err, "Local Google API")
+            ping_error(err, "Media Pipeline")
             return None, None, False
+
+        if not sfx_urls:
+            print("  ⚠️ Warning: SFX pool empty (Drive unavailable). Proceeding with clean audio mix (no SFX).")
+            sfx_urls = []
+
+        if not bgm_url:
+            print("  ⚠️ Warning: BGM unavailable (Drive unavailable). Proceeding without background music.")
+            bgm_url = ""
 
         # SMART CACHE HASHING: Ensures Remotion safely resumes identical renders
         # without glitched/stale assets if the script changes.

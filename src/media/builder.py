@@ -127,7 +127,7 @@ def _cleanup_local_media():
         for f in os.listdir(public_media_dir):
             p = os.path.join(public_media_dir, f)
             try:
-                if os.path.isfile(p):
+                if os.path.isfile(p) and f != ".gitkeep":
                     os.remove(p)
             except Exception:
                 pass
@@ -135,41 +135,92 @@ def _cleanup_local_media():
 def _do_local_render(input_props, total_frames, output_path="temp_render_local.mp4"):
     """
     Renders video locally using Remotion CLI to save 100% of AWS Lambda GB-Seconds.
+    Includes Tier 2 Safe Fallback (single-thread linear rendering with bundle cache cleared).
     """
     import subprocess
     import json
     import sys
 
-    print("\n  ⚡ [LOCAL RENDER ENGINE] Rendering locally via Remotion CLI (Zero AWS Lambda Cost)...", flush=True)
+    out_file = os.path.abspath(output_path)
     temp_props_file = os.path.abspath(f"hazy-remotion-cloud/temp_props_{int(time.time())}.json")
+
     try:
         with open(temp_props_file, "w", encoding="utf-8") as pf:
             json.dump(input_props, pf)
 
-        out_file = os.path.abspath(output_path)
-        cmd = [
+        # ── TIER 1: Standard high-performance render ──────────────────────────
+        print("\n  ⚡ [LOCAL RENDER ENGINE - TIER 1] Rendering locally via Remotion CLI...", flush=True)
+        cmd_tier1 = [
             "npx", "remotion", "render",
             "src/index.ts", "MyComp",
             out_file,
             f"--props={temp_props_file}",
             f"--frames=0-{total_frames-1}",
+            f"--duration={total_frames}",
             "--overwrite"
         ]
-        res = subprocess.run(
-            cmd,
-            cwd="hazy-remotion-cloud",
-            shell=True if sys.platform == "win32" else False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8"
-        )
-        if res.returncode == 0 and os.path.exists(out_file):
+
+        res = None
+        try:
+            res = subprocess.run(
+                cmd_tier1,
+                cwd="hazy-remotion-cloud",
+                shell=True if sys.platform == "win32" else False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=600  # 10 minute safety timeout
+            )
+        except subprocess.TimeoutExpired:
+            print("  ⚠️ [TIER 1 TIMEOUT] Primary render exceeded 10m. Aborting process for safe fallback...", flush=True)
+
+        if res and res.returncode == 0 and os.path.exists(out_file) and os.path.getsize(out_file) > 10000:
             print(f"  ✓ Local render complete: {out_file}", flush=True)
             return out_file, None
-        else:
-            err = f"Local render process failed: {res.stderr[:400] if res.stderr else res.stdout[:400]}"
+
+        # ── TIER 2: Safe Linear Mode (--concurrency=1, --bundle-cache=false) ──
+        tier1_err = res.stderr[:300] if (res and res.stderr) else (res.stdout[:300] if res else "Timed out")
+        print(f"\n  ⚠️ [TIER 1 FAILED]: {tier1_err}", flush=True)
+        print("  🛡️ [LOCAL RENDER ENGINE - TIER 2 FALLBACK] Triggering Safe Linear Render (--concurrency=1, --bundle-cache=false)...", flush=True)
+
+        cmd_tier2 = [
+            "npx", "remotion", "render",
+            "src/index.ts", "MyComp",
+            out_file,
+            f"--props={temp_props_file}",
+            f"--frames=0-{total_frames-1}",
+            f"--duration={total_frames}",
+            "--concurrency=1",
+            "--bundle-cache=false",
+            "--overwrite"
+        ]
+
+        try:
+            res_tier2 = subprocess.run(
+                cmd_tier2,
+                cwd="hazy-remotion-cloud",
+                shell=True if sys.platform == "win32" else False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=720  # 12 minute safety timeout for linear render
+            )
+            if res_tier2.returncode == 0 and os.path.exists(out_file) and os.path.getsize(out_file) > 10000:
+                print(f"  ✓ Fallback local render complete: {out_file}", flush=True)
+                return out_file, None
+            else:
+                err = f"Tier 2 Fallback failed: {res_tier2.stderr[:400] if res_tier2.stderr else res_tier2.stdout[:400]}"
+                print(f"  ❌ {err}", flush=True)
+                return None, err
+        except subprocess.TimeoutExpired:
+            err = "Tier 2 Fallback render timed out after 12 minutes."
             print(f"  ❌ {err}", flush=True)
             return None, err
+        except Exception as e:
+            err = f"Tier 2 Fallback exception: {e}"
+            print(f"  ❌ {err}", flush=True)
+            return None, err
+
     except Exception as e:
         return None, f"Local render exception: {e}"
     finally:
@@ -220,15 +271,17 @@ def make_cloud_video(
     bgm_volume = 0.15 if category == "gaming" else 0.12
 
     input_props = {
-        "audioUrl":       voice_url,
-        "videoUrls":      background_urls,
-        "sfxUrls":        sfx_urls or [],
-        "bgmUrl":         bgm_url or "",
-        "bgmVolume":      bgm_volume,
-        "segments":       segments_data,
-        "renderSeed":     render_seed,
-        "category":       category,
-        "wordTimestamps": word_timestamps or [],
+        "audioUrl":         voice_url,
+        "videoUrls":        background_urls,
+        "sfxUrls":          sfx_urls or [],
+        "bgmUrl":           bgm_url or "",
+        "bgmVolume":        bgm_volume,
+        "segments":         segments_data,
+        "renderSeed":       render_seed,
+        "category":         category,
+        "wordTimestamps":   word_timestamps or [],
+        "durationInFrames": total_frames,
+        "totalFrames":      total_frames,
         "effects": {
             "zoom":       True,
             "transition": "fade",

@@ -237,8 +237,8 @@ def generate_voiceover(script_text: str, category: str = "general"):
         shutil.copy(local_file, dest_path)
         if os.path.exists(local_file):
             os.remove(local_file)
-        print(f"  ✓ Staged local audio: /media/{filename} (Zero AWS S3 cost)")
-        return f"/media/{filename}", duration_seconds, word_timestamps, None
+        print(f"  ✓ Staged local audio: /public/media/{filename} (Zero AWS S3 cost)")
+        return f"/public/media/{filename}", duration_seconds, word_timestamps, None
 
     # ── Upload to S3 (Cloud mode only) ────────────────────────────────────
     try:

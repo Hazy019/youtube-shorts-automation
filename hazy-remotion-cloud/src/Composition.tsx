@@ -1,6 +1,6 @@
 import {
   AbsoluteFill, Audio, OffthreadVideo, Series, Sequence,
-  useVideoConfig, interpolate, useCurrentFrame, spring, random
+  useVideoConfig, interpolate, useCurrentFrame, spring, random, staticFile
 } from 'remotion';
 import React from 'react';
 import { loadFont } from "@remotion/google-fonts/BebasNeue";
@@ -502,6 +502,24 @@ const KaraokeCaption: React.FC<{ wordTimestamps: WordTimestamp[]; fps: number }>
   );
 };
 
+// Helper to resolve media URLs across local render, cloud (S3), and dev studio
+export const resolveMediaUrl = (url: string | undefined): string => {
+  if (!url) return '';
+  // Remote S3 URLs (Cloud mode) pass through directly
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // Properly prefixed public assets
+  if (url.startsWith('/public/')) return url;
+  if (url.startsWith('public/')) return `/${url}`;
+  // Legacy /media/ fallback remapped automatically
+  if (url.startsWith('/media/')) return `/public${url}`;
+  if (url.startsWith('media/')) return `/public/${url}`;
+  try {
+    return staticFile(url);
+  } catch {
+    return url;
+  }
+};
+
 // ── Main composition ──────────────────────────────────────────────────────────
 export const MyComp: React.FC<{
   audioUrl: string;
@@ -539,7 +557,7 @@ export const MyComp: React.FC<{
           {videoUrls.map((url, i) => (
             <Series.Sequence key={i} durationInFrames={framesPerClip}>
               <ZoomingVideo
-                url={url}
+                url={resolveMediaUrl(url)}
                 effects={effects}
                 clipDuration={framesPerClip}
                 renderSeed={renderSeed}
@@ -557,10 +575,10 @@ export const MyComp: React.FC<{
         <HookOverlay fps={fps} category={category} />
 
         {/* Voiceover — always dominant at 1.0 */}
-        <Audio src={audioUrl} volume={1.0} />
+        {audioUrl && <Audio src={resolveMediaUrl(audioUrl)} volume={1.0} />}
 
         {/* BGM — atmosphere layer */}
-        {bgmUrl && <Audio src={bgmUrl} volume={bgmVolume} loop />}
+        {bgmUrl && <Audio src={resolveMediaUrl(bgmUrl)} volume={bgmVolume} loop />}
 
         {/* Karaoke captions — word-by-word gold highlight synced to voiceover */}
         <KaraokeCaption wordTimestamps={wordTimestamps} fps={fps} />
@@ -585,7 +603,7 @@ export const MyComp: React.FC<{
               <AnimatedText segment={s} effects={effects} />
               {sfxSrc && (
                 <Sequence from={0} durationInFrames={sfxDuration}>
-                  <Audio src={sfxSrc} volume={sfxVol} />
+                  <Audio src={resolveMediaUrl(sfxSrc)} volume={sfxVol} />
                 </Sequence>
               )}
             </Sequence>

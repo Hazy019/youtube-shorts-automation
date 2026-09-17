@@ -10,6 +10,12 @@ export const RemotionRoot: React.FC = () => {
       fps={30}
       width={1080}
       height={1920}
+      calculateMetadata={({ props }) => {
+        const frames = (props as any)?.totalFrames ?? (props as any)?.durationInFrames;
+        return {
+          durationInFrames: frames ? Math.max(150, Number(frames)) : 900,
+        };
+      }}
       defaultProps={{
         videoUrls: ["https://www.w3schools.com/html/mov_bbb.mp4"],
         audioUrl: "https://www.w3schools.com/html/horse.mp3",

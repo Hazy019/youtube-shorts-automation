@@ -60,8 +60,8 @@ def _stage_local_asset(source_path_or_fh, filename):
         source_path_or_fh.seek(0)
         with open(dest_path, "wb") as f:
             f.write(source_path_or_fh.read())
-    print(f"    ✓ Staged local asset: /media/{filename} (Zero AWS S3 Cost)")
-    return f"/media/{filename}"
+    print(f"    ✓ Staged local asset: /public/media/{filename} (Zero AWS S3 Cost)")
+    return f"/public/media/{filename}"
 
 # ── CATEGORIZED FALLBACK POOLS ──────────────────────────────────────────────
 # We pick a pool based on the original keyword's intent to keep variety relevant.
