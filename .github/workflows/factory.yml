@@ -2,8 +2,8 @@ name: Daily Hazy Chanel Factory
 
 on:
   schedule:
-    - cron: '0 9 * * *'    # 09:00 UTC (5:00 AM EDT) — 2h render lead before 11:00 UTC / 7:00 AM EDT peak slot
-    - cron: '0 21 * * *'   # 21:00 UTC (5:00 PM EDT) — 2h render lead before 23:00 UTC / 7:00 PM EDT peak slot
+    - cron: '30 8 * * *'   # 08:30 UTC (4:30 AM EDT) — 2.5h render lead before 11:00 UTC / 7:00 AM EDT peak slot
+    - cron: '30 20 * * *'  # 20:30 UTC (4:30 PM EDT) — 2.5h render lead before 23:00 UTC / 7:00 PM EDT peak slot
   workflow_dispatch:
 
 # Prevents minute waste if a manual re-run or workflow_dispatch fires during a live run
@@ -29,6 +29,14 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'requirements.txt'
 
+      # setup-node for Remotion CLI Local Rendering (Zero AWS Lambda Cost)
+      - name: Setup Node.js for Remotion
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'hazy-remotion-cloud/package-lock.json'
+
       # Auth Tokens — one per YouTube account
       - name: Recreate Auth Tokens
         env:
@@ -51,10 +59,13 @@ jobs:
           # ELEVENLABS_API_KEY removed — Edge-TTS is the sole TTS engine
           echo "PEXELS_API_KEY=${{ secrets.PEXELS_API_KEY }}"             >> .env
           echo "PIXABAY_API_KEY=${{ secrets.PIXABAY_API_KEY }}"           >> .env
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"       >> .env
-          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
-          echo "BUCKET_NAME=${{ secrets.BUCKET_NAME }}"                   >> .env
-          echo "SERVE_URL=${{ secrets.SERVE_URL }}"                       >> .env
+          # AWS Dependencies Commented Out — Switching to Zero Cost Local Render
+          # echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"       >> .env
+          # echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
+          # echo "BUCKET_NAME=${{ secrets.BUCKET_NAME }}"                   >> .env
+          # echo "SERVE_URL=${{ secrets.SERVE_URL }}"                       >> .env
+          # echo "FUNCTION_NAME=${{ secrets.FUNCTION_NAME }}"               >> .env
+          echo "RENDER_MODE=local"                                         >> .env
           echo "SFX_FOLDER_ID=${{ secrets.SFX_FOLDER_ID }}"               >> .env
           echo "GENERAL_BGM_FOLDER_ID=${{ secrets.GENERAL_BGM_FOLDER_ID }}" >> .env
           echo "SCIENCE_BROLL_FOLDER_ID=${{ secrets.SCIENCE_BROLL_FOLDER_ID }}" >> .env
@@ -68,7 +79,6 @@ jobs:
           echo "META_PAGE_ACCESS_TOKEN=${{ secrets.META_PAGE_ACCESS_TOKEN }}" >> .env
           echo "META_PAGE_ID=${{ secrets.META_PAGE_ID }}"                 >> .env
           echo "META_INSTAGRAM_ID=${{ secrets.META_INSTAGRAM_ID }}"       >> .env
-          echo "FUNCTION_NAME=${{ secrets.FUNCTION_NAME }}"               >> .env
           echo "GITHUB_ACTIONS=true"                                       >> .env
 
       # Verify Secrets — pure bash, zero pip, runs in <1s
@@ -77,10 +87,11 @@ jobs:
           MISSING=()
           [ -z "${{ secrets.GEMINI_API_KEY }}"          ] && MISSING+=("GEMINI_API_KEY")
           [ -z "${{ secrets.SUPABASE_URL }}"            ] && MISSING+=("SUPABASE_URL")
-          [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}"       ] && MISSING+=("AWS_ACCESS_KEY_ID")
-          [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}"   ] && MISSING+=("AWS_SECRET_ACCESS_KEY")
-          [ -z "${{ secrets.BUCKET_NAME }}"             ] && MISSING+=("BUCKET_NAME")
-          [ -z "${{ secrets.SERVE_URL }}"               ] && MISSING+=("SERVE_URL")
+          # AWS Secrets commented out — zero cost local engine
+          # [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}"       ] && MISSING+=("AWS_ACCESS_KEY_ID")
+          # [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}"   ] && MISSING+=("AWS_SECRET_ACCESS_KEY")
+          # [ -z "${{ secrets.BUCKET_NAME }}"             ] && MISSING+=("BUCKET_NAME")
+          # [ -z "${{ secrets.SERVE_URL }}"               ] && MISSING+=("SERVE_URL")
           [ -z "${{ secrets.PEXELS_API_KEY }}"          ] && MISSING+=("PEXELS_API_KEY")
           [ -z "${{ secrets.TOKEN_YOUTUBE_HAZY }}"      ] && MISSING+=("TOKEN_YOUTUBE_HAZY")
           [ -z "${{ secrets.TOKEN_YOUTUBE_US }}"        ] && MISSING+=("TOKEN_YOUTUBE_US")
@@ -91,6 +102,13 @@ jobs:
             exit 1
           fi
           echo "All critical secrets present."
+
+      # Install Node Dependencies for Remotion Local Render Engine
+      - name: Install Remotion CLI Dependencies
+        run: |
+          cd hazy-remotion-cloud
+          npm ci
+          npx remotion browser ensure
 
       # Install ffmpeg — crucial for trimming videos before S3 upload (saves minutes!)
       - name: Install FFmpeg

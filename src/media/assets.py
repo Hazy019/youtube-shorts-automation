@@ -3,6 +3,7 @@ import random
 import io
 import time
 import uuid
+import shutil
 import boto3
 import requests
 import socket
@@ -47,6 +48,20 @@ HISTORY_BROLL_FOLDER_ID = os.getenv("HISTORY_BROLL_FOLDER_ID")
 SCIENCE_BROLL_FOLDER_ID = os.getenv("SCIENCE_BROLL_FOLDER_ID")
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
+
+def _stage_local_asset(source_path_or_fh, filename):
+    """Save an asset to Remotion public/media folder for local rendering (Zero S3 Cost)."""
+    public_media_dir = os.path.abspath("hazy-remotion-cloud/public/media")
+    os.makedirs(public_media_dir, exist_ok=True)
+    dest_path = os.path.join(public_media_dir, filename)
+    if isinstance(source_path_or_fh, str):
+        shutil.copy(source_path_or_fh, dest_path)
+    else:
+        source_path_or_fh.seek(0)
+        with open(dest_path, "wb") as f:
+            f.write(source_path_or_fh.read())
+    print(f"    ✓ Staged local asset: /media/{filename} (Zero AWS S3 Cost)")
+    return f"/media/{filename}"
 
 # ── CATEGORIZED FALLBACK POOLS ──────────────────────────────────────────────
 # We pick a pool based on the original keyword's intent to keep variety relevant.
@@ -199,11 +214,14 @@ def sync_drive_to_s3(folder_id, num_clips, media_type="video", max_duration=None
     random.shuffle(items)
     selected = items[: min(num_clips, len(items))]
 
-    s3 = boto3.client(
-        "s3",
-        region_name="us-east-1",
-        config=Config(region_name="us-east-1", s3={"addressing_style": "virtual"}),
-    )
+    is_local = (os.getenv("RENDER_MODE", "local").lower() == "local" or not BUCKET_NAME)
+    s3 = None
+    if not is_local:
+        s3 = boto3.client(
+            "s3",
+            region_name="us-east-1",
+            config=Config(region_name="us-east-1", s3={"addressing_style": "virtual"}),
+        )
     urls = []
 
     for item in selected:
@@ -254,14 +272,25 @@ def sync_drive_to_s3(folder_id, num_clips, media_type="video", max_duration=None
                 
                 if trim_video_ffmpeg(temp_raw, temp_trimmed, max_duration):
                     final_fh = open(temp_trimmed, "rb")
-                    print(f"    S3 Upload: Sending trimmed version ({os.path.getsize(temp_trimmed)/1024/1024:.1f}MB)")
+                    print(f"    Trimmed version ready ({os.path.getsize(temp_trimmed)/1024/1024:.1f}MB)")
                 else:
                     fh.seek(0)
                     final_fh = fh
             except Exception as e:
-                print(f"    Trimming failed, uploading raw: {e}")
+                print(f"    Trimming failed, using raw: {e}")
                 fh.seek(0)
                 final_fh = fh
+
+        if is_local:
+            ext = ".mp4" if media_type == "video" else ".mp3"
+            fname = f"drive_{uuid.uuid4().hex}{ext}"
+            url = _stage_local_asset(final_fh, fname)
+            urls.append(url)
+            if final_fh != fh:
+                final_fh.close()
+            for f in [temp_raw, temp_trimmed]:
+                if os.path.exists(f): os.remove(f)
+            continue
 
         print(f"    Uploading to S3 cloud storage...")
         key = f"{s3_prefix}{uuid.uuid4().hex}"
@@ -350,12 +379,14 @@ def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
 
         random.shuffle(videos)
 
-        # ── S3 client (reuse same config as sync_drive_to_s3) ──────────────────
-        s3 = boto3.client(
-            "s3",
-            region_name="us-east-1",
-            config=Config(region_name="us-east-1", s3={"addressing_style": "virtual"}),
-        )
+        is_local = (os.getenv("RENDER_MODE", "local").lower() == "local" or not BUCKET_NAME)
+        s3 = None
+        if not is_local:
+            s3 = boto3.client(
+                "s3",
+                region_name="us-east-1",
+                config=Config(region_name="us-east-1", s3={"addressing_style": "virtual"}),
+            )
 
         urls = []
         for video in videos[:num_clips]:
@@ -387,9 +418,9 @@ def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
 
             cdn_url = chosen["link"]
             video_id = video.get("id", uuid.uuid4().hex)
-            print(f"  Pexels → S3: [{keyword}] video {video_id} ({chosen.get('height', '?')}p)")
+            print(f"  Pexels → {'Local' if is_local else 'S3'}: [{keyword}] video {video_id} ({chosen.get('height', '?')}p)")
 
-            # Download from Pexels CDN (fast on GitHub runner) → stream to S3
+            # Download from Pexels CDN (fast on GitHub runner) → stream to S3 or stage locally
             temp_raw = f"temp_raw_{uuid.uuid4().hex}.mp4"
             temp_trimmed = f"temp_trimmed_{uuid.uuid4().hex}.mp4"
             
@@ -414,6 +445,12 @@ def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
                     if trim_video_ffmpeg(temp_raw, temp_trimmed, max_duration):
                         upload_path = temp_trimmed
                 
+                if is_local:
+                    fname = f"pexels_{video_id}_{uuid.uuid4().hex[:8]}.mp4"
+                    url = _stage_local_asset(upload_path, fname)
+                    urls.append(url)
+                    continue
+
                 key = f"backgrounds/pexels_{video_id}_{uuid.uuid4().hex[:8]}.mp4"
                 print(f"    Uploading to S3 ({os.path.getsize(upload_path)/1024/1024:.1f}MB)...")
                 
@@ -440,7 +477,7 @@ def _fetch_pexels(keyword, num_clips, page=None, max_duration=None):
                 urls.append(presigned)
                 print(f"    ✓ Uploaded to S3 → Lambda will fetch at wire speed.")
             except Exception as e:
-                print(f"  Pexels S3 upload failed for video {video_id}: {e} — skipping clip.")
+                print(f"  Pexels asset staging failed for video {video_id}: {e} — skipping clip.")
             finally:
                 for f in [temp_raw, temp_trimmed]:
                     if os.path.exists(f): os.remove(f)
@@ -489,11 +526,14 @@ def _fetch_pixabay(keyword, num_clips, max_duration=None):
 
         random.shuffle(videos)
 
-        s3 = boto3.client(
-            "s3",
-            region_name="us-east-1",
-            config=Config(region_name="us-east-1", s3={"addressing_style": "virtual"}),
-        )
+        is_local = (os.getenv("RENDER_MODE", "local").lower() == "local" or not BUCKET_NAME)
+        s3 = None
+        if not is_local:
+            s3 = boto3.client(
+                "s3",
+                region_name="us-east-1",
+                config=Config(region_name="us-east-1", s3={"addressing_style": "virtual"}),
+            )
 
         urls = []
         for video in videos[:num_clips]:
@@ -517,7 +557,7 @@ def _fetch_pixabay(keyword, num_clips, max_duration=None):
 
             cdn_url = chosen_data["url"]
             video_id = video.get("id", uuid.uuid4().hex)
-            print(f"  Pixabay → S3: [{keyword}] video {video_id}")
+            print(f"  Pixabay → {'Local' if is_local else 'S3'}: [{keyword}] video {video_id}")
 
             temp_raw = f"temp_raw_{uuid.uuid4().hex}.mp4"
             temp_trimmed = f"temp_trimmed_{uuid.uuid4().hex}.mp4"
@@ -542,6 +582,12 @@ def _fetch_pixabay(keyword, num_clips, max_duration=None):
                     if trim_video_ffmpeg(temp_raw, temp_trimmed, max_duration):
                         upload_path = temp_trimmed
                 
+                if is_local:
+                    fname = f"pixabay_{video_id}_{uuid.uuid4().hex[:8]}.mp4"
+                    url = _stage_local_asset(upload_path, fname)
+                    urls.append(url)
+                    continue
+
                 key = f"backgrounds/pixabay_{video_id}_{uuid.uuid4().hex[:8]}.mp4"
                 print(f"    Uploading to S3 ({os.path.getsize(upload_path)/1024/1024:.1f}MB)...")
                 
@@ -568,7 +614,7 @@ def _fetch_pixabay(keyword, num_clips, max_duration=None):
                 urls.append(presigned)
                 print(f"    ✓ Uploaded to S3.")
             except Exception as e:
-                print(f"  Pixabay S3 upload failed for video {video_id}: {e}")
+                print(f"  Pixabay asset staging failed for video {video_id}: {e}")
             finally:
                 for f in [temp_raw, temp_trimmed]:
                     if os.path.exists(f): os.remove(f)

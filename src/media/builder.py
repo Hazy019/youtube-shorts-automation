@@ -120,6 +120,18 @@ def _do_render(client, params):
         time.sleep(POLL_INTERVAL)
 
 
+def _cleanup_local_media():
+    """Remove temporary media staged in hazy-remotion-cloud/public/media."""
+    public_media_dir = os.path.abspath("hazy-remotion-cloud/public/media")
+    if os.path.exists(public_media_dir):
+        for f in os.listdir(public_media_dir):
+            p = os.path.join(public_media_dir, f)
+            try:
+                if os.path.isfile(p):
+                    os.remove(p)
+            except Exception:
+                pass
+
 def _do_local_render(input_props, total_frames, output_path="temp_render_local.mp4"):
     """
     Renders video locally using Remotion CLI to save 100% of AWS Lambda GB-Seconds.
@@ -166,6 +178,7 @@ def _do_local_render(input_props, total_frames, output_path="temp_render_local.m
                 os.remove(temp_props_file)
             except Exception:
                 pass
+        _cleanup_local_media()
 
 
 def make_cloud_video(
@@ -184,7 +197,7 @@ def make_cloud_video(
     Returns: (output_url: str | None, error_msg: str | None)
     """
     global SERVE_URL
-    render_mode = os.getenv("RENDER_MODE", "cloud").lower()
+    render_mode = os.getenv("RENDER_MODE", "local").lower()
     use_local   = os.getenv("USE_LOCAL_RENDER", "").lower() in ["true", "1", "yes"]
 
     if not background_urls:

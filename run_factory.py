@@ -46,8 +46,8 @@ def check_environment():
     elif "--cloud" in sys.argv or "-c" in sys.argv:
         os.environ["RENDER_MODE"] = "cloud"
 
-    render_mode = os.getenv("RENDER_MODE", "cloud").lower()
-    print(f"🔧 [SYSTEM ARCHITECTURE] Active Render Mode: {render_mode.upper()} ({'Zero AWS Cost / Local GPU' if render_mode == 'local' else 'AWS Lambda Parallel Render'})")
+    render_mode = os.getenv("RENDER_MODE", "local").lower()
+    print(f"🔧 [SYSTEM ARCHITECTURE] Active Render Mode: {render_mode.upper()} ({'Zero AWS Cost / Local Remotion Engine' if render_mode == 'local' else 'AWS Lambda Parallel Render'})")
 
     required = ["GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_KEY"]
     if render_mode == "cloud":
@@ -201,18 +201,23 @@ def extract_s3_key(url):
         return None
 
 def cleanup_s3_assets(keys):
-    """Delete temporary background and audio assets from S3."""
-    if not keys: return
+    """Delete temporary background and audio assets from S3 (if AWS S3 configured)."""
+    bucket = os.getenv("BUCKET_NAME")
+    if not keys or not bucket: return
     # Filter out None and deduplicate
     unique_keys = list(set(k for k in keys if k))
+    if not unique_keys: return
     print(f"\n--- S3 CLEANUP: Deleting {len(unique_keys)} temporary assets ---")
-    s3 = boto3.client("s3", region_name="us-east-1")
-    for key in unique_keys:
-        try:
-            s3.delete_object(Bucket=os.getenv("BUCKET_NAME"), Key=key)
-            print(f"  ✓ Deleted: {key}")
-        except Exception as e:
-            print(f"  ⚠ Failed to delete {key}: {e}")
+    try:
+        s3 = boto3.client("s3", region_name="us-east-1")
+        for key in unique_keys:
+            try:
+                s3.delete_object(Bucket=bucket, Key=key)
+                print(f"  ✓ Deleted: {key}")
+            except Exception as e:
+                print(f"  ⚠ Failed to delete {key}: {e}")
+    except Exception as e:
+        print(f"  ⚠ S3 Cleanup skipped (no AWS client): {e}")
 
 def produce_video(category, local_excludes=None, token_name='token_youtube.json'):
     print(f"\n--- STARTING PRODUCTION FOR CATEGORY: {category.upper()} (Token: {token_name}) ---")

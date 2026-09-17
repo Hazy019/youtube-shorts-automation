@@ -43,9 +43,15 @@ def parse_s3_url(url: str) -> tuple[str | None, str | None]:
         return None, None
 
 def get_s3_client():
-    region = os.getenv("AWS_REGION") or os.getenv("REMOTION_AWS_REGION") or "us-east-1"
+    endpoint = os.getenv("R2_ENDPOINT_URL") or os.getenv("ENDPOINT_URL")
+    region = os.getenv("AWS_REGION") or os.getenv("REMOTION_AWS_REGION") or ("auto" if endpoint else "us-east-1")
+    access_key = os.getenv("R2_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID")
+    secret_key = os.getenv("R2_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY")
     return boto3.client(
         "s3",
+        endpoint_url=endpoint,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
         region_name=region,
         config=Config(region_name=region, s3={"addressing_style": "virtual"}),
     )
@@ -53,8 +59,16 @@ def get_s3_client():
 def download_s3_or_http_file(url: str, output_path: str) -> bool:
     """
     Downloads file using boto3 if it is an S3 URL (works for private buckets like Remotion),
-    falling back to requests for public HTTP URLs.
+    falling back to requests for public HTTP URLs, or copying if already a local file path.
     """
+    if not url:
+        return False
+    if os.path.exists(url):
+        import shutil
+        if os.path.abspath(url) != os.path.abspath(output_path):
+            shutil.copy(url, output_path)
+        return True
+
     bucket, key = parse_s3_url(url)
     if bucket and key:
         try:

@@ -28,6 +28,7 @@ RETRY LOGIC:
 import os
 import time
 import random
+import shutil
 import requests
 import boto3
 import asyncio
@@ -224,14 +225,29 @@ def generate_voiceover(script_text: str, category: str = "general"):
         os.remove(local_file)
         return None, 0, [], f"Failed to read audio duration: {e}"
 
-    # ── Upload to S3 ──────────────────────────────────────────────────────
+    render_mode = os.getenv("RENDER_MODE", "local").lower()
+    bucket_name = os.getenv("BUCKET_NAME")
+
+    # If in local mode or no S3 bucket configured, stage audio directly for Remotion CLI
+    if render_mode == "local" or not bucket_name:
+        public_media_dir = os.path.abspath("hazy-remotion-cloud/public/media")
+        os.makedirs(public_media_dir, exist_ok=True)
+        filename = f"voice_{int(time.time())}_{random.randint(1000,9999)}.mp3"
+        dest_path = os.path.join(public_media_dir, filename)
+        shutil.copy(local_file, dest_path)
+        if os.path.exists(local_file):
+            os.remove(local_file)
+        print(f"  ✓ Staged local audio: /media/{filename} (Zero AWS S3 cost)")
+        return f"/media/{filename}", duration_seconds, word_timestamps, None
+
+    # ── Upload to S3 (Cloud mode only) ────────────────────────────────────
     try:
         s3      = boto3.client("s3", region_name="us-east-1")
         s3_key  = f"voiceovers/voice_{int(time.time())}_{random.randint(1000,9999)}.mp3"
-        s3.upload_file(local_file, BUCKET_NAME, s3_key, ExtraArgs={"ContentType": "audio/mpeg"})
+        s3.upload_file(local_file, bucket_name, s3_key, ExtraArgs={"ContentType": "audio/mpeg"})
         presigned_url = s3.generate_presigned_url(
             "get_object",
-            Params={"Bucket": BUCKET_NAME, "Key": s3_key},
+            Params={"Bucket": bucket_name, "Key": s3_key},
             ExpiresIn=172800,  # 48h — consistent with all other S3 URLs
         )
     except Exception as e:
