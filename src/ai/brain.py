@@ -2,6 +2,7 @@ import os
 import re
 import json
 import time
+import random
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -223,14 +224,32 @@ def fetch_analytics_feedback():
         return ""
 
 
-def fetch_used_topics():
+def fetch_used_topics(category=None, limit=75):
+    """
+    Fetches past topics and titles from Supabase, isolated by channel/category,
+    providing a deep memory window (15-20+ days) to prevent topic repetition.
+    """
     db = _get_supabase()
     if not db:
         return []
     try:
-        rows = (db.table("videos").select("topic")
-                .order("created_at", desc=True).limit(25).execute())
-        return [v["topic"] for v in rows.data if v.get("topic")]
+        query = db.table("videos").select("topic, title")
+        if category:
+            query = query.eq("category", category)
+        rows = query.order("created_at", desc=True).limit(limit).execute()
+
+        seen = set()
+        used = []
+        for v in rows.data:
+            t = (v.get("topic") or "").strip()
+            title = (v.get("title") or "").strip()
+            if t and t.lower() not in seen:
+                seen.add(t.lower())
+                used.append(t)
+            if title and title.lower() not in seen:
+                seen.add(title.lower())
+                used.append(title)
+        return used
     except Exception as e:
         print(f"Topic fetch skipped: {e}")
         return []
@@ -345,12 +364,13 @@ AUDIENCE: US-based (use US slang, cultural references, and American-English).
 ANALYTICS FEEDBACK:
 {analytics_feedback if analytics_feedback else "No feedback yet — use YouTube Shorts best practices."}
 
-DO NOT repeat these recent topics:
+CRITICAL ANTI-REPETITION CONSTRAINT:
+DO NOT cover the same underlying historical incident, individual, experiment, heist, or scientific phenomenon as any of the items listed below. Even if you invent a brand new title, rephrase the hook, or approach it from an alternative angle, generating a topic covering these past subjects is STRICTLY FORBIDDEN:
 {forbidden_topics}
 
 DO NOT USE THE EXAMPLE TOPIC FROM THE SCHEMA.
 
-STYLE REFERENCE (match energy, do not copy topics):
+STYLE REFERENCE (match pacing and viral intensity, but DO NOT copy these topics):
 {examples}
 
 ══════════════════════════════════════════════════════════
@@ -363,6 +383,7 @@ H3. BANNED opening phrases (AUTO-REJECT and rewrite if generated):
     "Have you ever wondered", "This is the story of", "Imagine if", "Wait, actually",
     "So basically", "You see", "In a world where".
 H4. The hook must create a curiosity gap: state the claim boldly, withhold the full explanation for at least two more sentences.
+H5. HIGH-STAKES DRAMATIC FRAMING (ANTI-WIKIPEDIA): Frame the hook around immediate danger, extreme stakes, runaway algorithms, or an impossible paradox. Never write passive encyclopedia trivia.
 
 ══════════════════════════════════════════════════════════
 PART 2 — 5-STAGE NARRATIVE STRUCTURE (MANDATORY IN THIS ORDER)
@@ -371,8 +392,8 @@ Every video MUST contain exactly 5 to 6 segments following this structure:
 1. HOOK (role: "hook", 1 sentence, <8 words) — the surprising claim or number.
 2. STAKES (role: "stakes", 1 sentence) — why this claim matters or what's at risk / who it affects.
 3. BUILD (role: "build", 1-2 sentences) — deliver the explanation, escalating specificity, one new fact per sentence, never repeat a fact.
-4. PAYOFF (role: "payoff", 1 sentence) — the twist, resolution, or core revelation.
-5. BUTTON (role: "button", 1 sentence) — a punchy line that either (a) recontextualizes the whole video, or (b) poses a next-level question that makes a comment/rewatch likely. NEVER a generic "let me know what you think" CTA.
+4. PAYOFF (role: "payoff", 1 sentence) — the jaw-dropping resolution that fully answers the hook's curiosity gap.
+5. BUTTON (role: "button", 1 sentence) — THE INFINITE SEAMLESS LOOP: Craft the final sentence so it flows naturally and grammatically straight back into the opening HOOK sentence (e.g. ending with "And the wildest part? It all traces back to...", leading seamlessly into the hook replay). This makes the replay completely seamless and boosts retention above 100%. NEVER use generic "Like and subscribe" or "Comment down below" CTAs.
 
 ══════════════════════════════════════════════════════════
 PART 3 — VISUAL SYNC REQUIREMENT (FOR EVERY SEGMENT)
@@ -416,6 +437,27 @@ Return ONLY the JSON object. No preamble, no markdown, no explanation.
     return dynamic_section + _JSON_SCHEMA_EXAMPLE
 
 
+US_SUB_NICHES = [
+    ("CYBERSECURITY & DIGITAL HEISTS", "Zero-day exploits, dark web ransomware, casino/bank digital breaches, rogue code, and lost Bitcoin millions."),
+    ("FINANCIAL & WALL STREET ANOMALIES", "Flash crashes, ATM glitch incidents, runaway algorithmic trading, rogue traders, and bizarre economic loopholes."),
+    ("CLASSIFIED COLD WAR & BLACK PROJECTS", "Declassified Pentagon/CIA experiments, NORAD radar ghost incidents, nuclear close-calls, and bizarre military cover-ups."),
+    ("CRITICAL INFRASTRUCTURE & DISASTERS", "Massive blackout chain reactions, dam collapses, pipeline sabotages, and air traffic control near-misses in US history."),
+    ("BIZARRE LEGAL & STATE ANOMALIES", "Insane forgotten state laws, weird Supreme Court loopholes, outlawed everyday items (e.g. pinball ban), and bizarre courtroom heists."),
+    ("SILICON VALLEY & TECH SABOTAGE", "Corporate espionage, legendary prototype thefts, secret hardware backdoors, and the wild early days of internet hacking."),
+    ("AVIATION & AEROSPACE MYSTERIES", "Ghost planes over American skies, Skunk Works secrecy, supersonic flight anomalies, and mysterious desert radar incidents.")
+]
+
+GENERAL_SUB_NICHES = [
+    ("DEEP OCEAN & MARINE ANOMALIES", "Abyssal zone creatures, deep-sea hydrothermal vent anomalies, colossal squid encounters, and bizarre oceanic phenomena."),
+    ("COGNITIVE NEUROSCIENCE & PSYCHOLOGY", "Rare neurological disorders (Capgras, Cotard's, alien hand syndrome), sensory hallucinations, and mind-bending cognitive experiments."),
+    ("FORGOTTEN HISTORY & LOST CIVILIZATIONS", "Untranslated ancient texts, subterranean cities, unexplainable archaeological relics, and vanished expeditions."),
+    ("EXTREME ASTROPHYSICS & PLANETARY SCIENCE", "Rogue exoplanets, fast radio bursts, solar superstorms, neutron star physics, and cosmic anomalies."),
+    ("ACCIDENTAL SCIENTIFIC DISCOVERIES & LAB ERRORS", "Lethal radiation mistakes, serendipitous chemistry breakthroughs, and dangerous laboratory anomalies."),
+    ("MEDIEVAL & HISTORICAL ODDITIES", "Mass psychogenic hysteria (dancing plagues), bizarre royal eccentricities, ancient biological warfare, and cryptic manuscripts."),
+    ("MICROSCOPIC & PARASITIC WARFARE", "Fungal mind-control (cordyceps), extreme extremophiles, tardigrade survival, and bacterial communication networks.")
+]
+
+
 def generate_full_package(category, local_excludes=None):
     """
     Generates a complete video production package via Gemini.
@@ -428,20 +470,36 @@ def generate_full_package(category, local_excludes=None):
       404 NOT_FOUND    → model string invalid, skip immediately.
       Auth error       → fatal, raise immediately.
     """
-    used_topics = fetch_used_topics()
+    raw_used = fetch_used_topics(category=category, limit=75)
     if local_excludes:
-        used_topics.extend(local_excludes)
-    used_topics = used_topics[:20]
-    feedback     = fetch_analytics_feedback()
+        for ex in local_excludes:
+            if ex and ex not in raw_used:
+                raw_used.insert(0, ex)
+
+    # Deduplicate while preserving recency order
+    seen = set()
+    used_topics = []
+    for item in raw_used:
+        norm = item.strip().lower()
+        if norm not in seen:
+            seen.add(norm)
+            used_topics.append(item.strip())
+    used_topics = used_topics[:60]
+    feedback = fetch_analytics_feedback()
 
     if category == "us-centric":
-        theme        = "High-energy US & Tech stories: Cybersecurity mysteries, dark web heists, rogue AI glitches, financial anomalies, and secret American history."
+        niche_name, niche_focus = random.choice(US_SUB_NICHES)
+        print(f"  🎯 [TOPIC ROTATION] Assigned Sub-Niche: {niche_name}")
+        theme = (
+            f"High-energy US & Tech stories with a dedicated focus today on [{niche_name}]: {niche_focus} "
+            f"Requirements: High stakes, suspenseful pacing, authentic US cultural terminology, and real consequences."
+        )
         examples     = (
-            "- How a single zero-day bug shut down a major US oil pipeline for 6 days...\\n"
-            "- The mystery of the guy who threw away a hard drive with $500M in Bitcoin into a landfill...\\n"
-            "- How hackers used a connected aquarium thermometer to rob a US casino's database...\\n"
-            "- The 1987 ATM glitch in Chicago that let people withdraw unlimited cash for 4 hours...\\n"
-            "- Why the US government actually tried to outlaw pinball machines for 30 years...\\n"
+            "- How a single zero-day bug shut down a major US oil pipeline for 6 days...\n"
+            "- The mystery of the guy who threw away a hard drive with $500M in Bitcoin into a landfill...\n"
+            "- How hackers used a connected aquarium thermometer to rob a US casino's database...\n"
+            "- The 1987 ATM glitch in Chicago that let people withdraw unlimited cash for 4 hours...\n"
+            "- Why the US government actually tried to outlaw pinball machines for 30 years...\n"
             "- The classified code glitch that almost started an accidental nuclear response in 1983..."
         )
         keyword_hint = 'Return a 2-3 word Pexels/Pixabay search term matching the exact subject (e.g., "Cyber Security", "Hacker Code", "Server Room", "Matrix Code", "Bank Vault", "American Flag", "New York Night"). Be specific to the topic — avoid generic terms like Parkour.'
@@ -451,25 +509,30 @@ def generate_full_package(category, local_excludes=None):
         # Inject the specific user feedback for US retention
         feedback += "\nUS & TECH RETENTION STRATEGY: Focus on Cybersecurity, Tech Heists, Rogue Code, and Bizarre US Anomalies. Use distinct hook archetypes (Reverse Logic, Secret Disclosure, High Stakes Loss). Never leave the core mystery unanswered!"
     else:
-        theme        = "DEEPLY OBSCURE and MIND-BLOWING science, history, and psychology. NO SURFACE-LEVEL TRIVIA. The facts must be so niche and thoroughly researched that even experts would be surprised. DO NOT generate 'AI slop' listicles."
+        niche_name, niche_focus = random.choice(GENERAL_SUB_NICHES)
+        print(f"  🎯 [TOPIC ROTATION] Assigned Sub-Niche: {niche_name}")
+        theme = (
+            f"DEEPLY OBSCURE and MIND-BLOWING facts with a dedicated focus today on [{niche_name}]: {niche_focus} "
+            f"NO SURFACE-LEVEL TRIVIA. The facts must be so niche and thoroughly researched that even subject matter enthusiasts would be surprised. DO NOT generate 'AI slop' listicles."
+        )
         examples     = (
-            "- Why a 19th-century solar storm caused telegraph machines to send messages while completely unplugged...\\n"
-            "- The classified Soviet project that accidentally created a lake so radioactive it could kill you in one hour...\\n"
-            "- The bizarre psychological condition where the brain perceives loved ones as identical imposters (Capgras delusion)...\\n"
-            "- How the CIA spent 20 million dollars training acoustic kitty spies, only for the first cat to be hit by a taxi...\\n"
+            "- Why a 19th-century solar storm caused telegraph machines to send messages while completely unplugged...\n"
+            "- The classified Soviet project that accidentally created a lake so radioactive it could kill you in one hour...\n"
+            "- The bizarre psychological condition where the brain perceives loved ones as identical imposters (Capgras delusion)...\n"
+            "- How the CIA spent 20 million dollars training acoustic kitty spies, only for the first cat to be hit by a taxi...\n"
             "- The physiological reason why human tears have different crystal structures depending on the emotion that caused them..."
         )
         keyword_hint = (
-            "A STRICTLY RELEVANT 2-word Pexels video search term that visually matches the topic.\\n"
-            "Space/astronomy -> 'Space Nebula'. Ocean -> 'Deep Ocean'. Brain -> 'Human Brain'.\\n"
-            "History -> 'Ancient Ruins'. Biology -> 'Microscope Cell'. Abstract/Tech -> 'Abstract Data'.\\n"
-            "DO NOT default to 'Parkour' or generic gameplay. The B-roll MUST visually represent the topic.\\n"
+            "A STRICTLY RELEVANT 2-word Pexels video search term that visually matches the topic.\n"
+            "Space/astronomy -> 'Space Nebula'. Ocean -> 'Deep Ocean'. Brain -> 'Human Brain'.\n"
+            "History -> 'Ancient Ruins'. Biology -> 'Microscope Cell'. Abstract/Tech -> 'Abstract Data'.\n"
+            "DO NOT default to 'Parkour' or generic gameplay. The B-roll MUST visually represent the topic.\n"
             "Return ONLY the 2-word keyword. Also provide 2 highly specific backup_keywords."
         )
         sfx_style    = "cinematic, atmospheric — riser, whoosh, and subtle heartbeat effects for tension"
         pace_guide   = "Build tension slowly but keep cuts fast. Drop the fact. Let voiceover breathe slightly, but maintain momentum."
 
-    forbidden_str = str(used_topics) if used_topics else "[]"
+    forbidden_str = "\n".join(f"• {t}" for t in used_topics) if used_topics else "(None recorded yet)"
 
     prompt = build_master_prompt(
         category=category,

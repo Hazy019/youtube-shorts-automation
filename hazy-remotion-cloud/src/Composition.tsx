@@ -80,6 +80,21 @@ const CyberHUDOverlay: React.FC = () => {
         <path d="M 30,1860 L 30,1890 L 60,1890" fill="none" stroke="#00F0FF" strokeWidth="3" opacity="0.7" />
         <path d="M 1050,1860 L 1050,1890 L 1020,1890" fill="none" stroke="#00F0FF" strokeWidth="3" opacity="0.7" />
       </svg>
+      {/* Live System Telemetry — Tech Atmosphere */}
+      <div style={{
+        position: 'absolute',
+        top: '28px',
+        left: '70px',
+        fontFamily: 'monospace',
+        fontSize: '20px',
+        fontWeight: 'bold',
+        color: '#00F0FF',
+        letterSpacing: '3px',
+        opacity: 0.85,
+        textShadow: '0 0 10px rgba(0,240,255,0.7)',
+      }}>
+        SEC_GRID // LIVE_ANALYSIS // 08:30:00
+      </div>
     </AbsoluteFill>
   );
 };
@@ -103,7 +118,7 @@ const CinematicLightLeak: React.FC<{ clipIndex: number }> = ({ clipIndex }) => {
   );
 };
 
-// ── HOOK OVERLAY — Category-Aware ────────────────────────────────────────────
+// ── HOOK OVERLAY — Category-Aware & Safe Zone Aligned ─────────────────────────
 const HookOverlay: React.FC<{ fps: number; category: string }> = ({ fps, category }) => {
   const frame = useCurrentFrame();
   if (frame > 2.5 * fps) return null;
@@ -137,34 +152,36 @@ const HookOverlay: React.FC<{ fps: number; category: string }> = ({ fps, categor
 
   if (category === 'us-centric') {
     return (
-      <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'flex-start', pointerEvents: 'none', zIndex: 4, flexDirection: 'column', padding: '0 0 120px 0' }}>
+      <AbsoluteFill style={{ justifyContent: 'flex-start', alignItems: 'center', pointerEvents: 'none', zIndex: 4, flexDirection: 'column', paddingTop: '75px' }}>
         <div style={{
           backgroundColor: '#CC0000',
           color: '#FFFFFF',
           fontFamily,
-          fontSize: '38px',
+          fontSize: '34px',
           fontWeight: '900',
-          letterSpacing: '3px',
-          padding: '10px 30px',
+          letterSpacing: '4px',
+          padding: '8px 36px',
           opacity,
           textTransform: 'uppercase',
-          width: '100%',
-          textAlign: 'center',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+          borderRadius: '4px',
+          boxShadow: '0 4px 20px rgba(204,0,0,0.6)',
         }}>
-          BREAKING NEWS
+          BREAKING INVESTIGATION
         </div>
         <div style={{
-          backgroundColor: '#1a1a1a',
+          backgroundColor: 'rgba(0,0,0,0.85)',
           color: '#FFD700',
           fontFamily,
-          fontSize: '28px',
-          padding: '8px 30px',
-          opacity: opacity * 0.9,
-          width: '100%',
-          textAlign: 'center',
+          fontSize: '22px',
+          fontWeight: '700',
+          letterSpacing: '2px',
+          padding: '6px 24px',
+          marginTop: '6px',
+          borderRadius: '4px',
+          opacity: opacity * 0.95,
+          border: '1px solid rgba(255,215,0,0.4)',
         }}>
-          — THIS ACTUALLY HAPPENED —
+          — DECLASSIFIED / VERIFIED —
         </div>
       </AbsoluteFill>
     );
@@ -192,7 +209,7 @@ const HookOverlay: React.FC<{ fps: number; category: string }> = ({ fps, categor
   );
 };
 
-// ── Background video clip with dynamic transitions ───────────────────────────
+// ── Background video clip with dynamic transitions & Crash Zoom Punch ─────────
 const ZoomingVideo: React.FC<{
   url: string;
   effects: EditorEffects;
@@ -207,13 +224,21 @@ const ZoomingVideo: React.FC<{
   const startScale = zoomDirection === 1 ? 1.0 : 1.15;
   const endScale = zoomDirection === 1 ? 1.15 : 1.0;
   
-  const scale = effects?.zoom 
+  // High-impact Crash Zoom Punch on the Hook (first clip, first 12 frames)
+  const hookPunch = (clipIndex === 0 && frame < 12)
+    ? spring({ frame, fps: 30, config: { damping: 10, stiffness: 240 } }) * 0.16
+    : 0;
+
+  const baseScale = effects?.zoom 
     ? interpolate(frame, [0, clipDuration], [startScale, endScale], { extrapolateRight: 'clamp' }) 
     : 1.05;
+  const scale = baseScale + hookPunch;
 
   const driftDirection = clipIndex % 2 === 0 ? 1 : -1;
   const driftX = interpolate(frame, [0, clipDuration], [0, 25 * driftDirection]);
-  const shakeX = frame < 8 && random(url + renderSeed) > 0.5 ? Math.sin(frame * 2) * 6 : 0;
+  const shakeX = (clipIndex === 0 && frame < 8)
+    ? Math.sin(frame * 2.5) * 8
+    : (frame < 8 && random(url + renderSeed) > 0.5 ? Math.sin(frame * 2) * 6 : 0);
 
   // Transition handling: Fade vs Flash vs Directional Whip
   const opacity =
@@ -248,6 +273,12 @@ const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
 
   // 1. POP: High-stiffness spring scale
   const popScale = spring({ frame, fps: 30, config: { damping: 12, stiffness: 220 } });
+
+  // Metric Pop: Extra punch for high-stakes numbers, cash, or war references
+  const isImpactMetric = /\$?[0-9]+[MKBkmb%]?|\b(WWIII|WW3|TRILLION|BILLION|MILLION|ZERO-DAY|CRASH|GLITCH)\b/i.test(segment.text);
+  const metricPop = isImpactMetric
+    ? spring({ frame, fps: 30, config: { damping: 9, stiffness: 280 } }) * 1.08
+    : popScale;
 
   // 2. BOUNCE: Vertical drop with rubber spring overshoot
   const bounceY = interpolate(
@@ -286,12 +317,15 @@ const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
     dynamicSize = Math.round(dynamicSize * 1.12);
   }
 
-  const yPos = segment.position === 'top' ? '10%' : segment.position === 'bottom' ? '72%' : '48%';
+  // Safe vertical positioning: Avoid top header (0-10%) and bottom metadata (70-100%)
+  const yPos = segment.position === 'top' ? '14%' : segment.position === 'bottom' ? '64%' : '44%';
 
   // Determine transform & style per effect
-  let transformStyle = `scale(${popScale})`;
+  let transformStyle = `scale(${metricPop})`;
   let opacityStyle = 1;
-  let textShadowStyle = '0px 8px 28px rgba(0,0,0,0.98)';
+  let textShadowStyle = isImpactMetric 
+    ? '0 0 25px rgba(255,215,0,0.8), 0px 8px 28px rgba(0,0,0,0.98)' 
+    : '0px 8px 28px rgba(0,0,0,0.98)';
 
   const effect = segment.text_effect ?? 'pop';
 
@@ -301,7 +335,7 @@ const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
     transformStyle = `translateX(${glitchX + factShakeX}px)`;
     textShadowStyle = isGlitching ? '4px 0px 0px #0FF, -4px 0px 0px #F0F' : '0px 8px 28px rgba(0,0,0,0.98)';
   } else if (effect === 'glow') {
-    transformStyle = `scale(${popScale})`;
+    transformStyle = `scale(${metricPop})`;
     textShadowStyle = `0 0 ${glowIntensity}px #00F0FF, 0 0 40px rgba(0,240,255,0.6), 0px 8px 28px rgba(0,0,0,0.98)`;
   } else if (effect === 'slide') {
     transformStyle = `translateX(${slideX}px)`;
@@ -313,7 +347,7 @@ const AnimatedText: React.FC<{ segment: Segment; effects: EditorEffects }> = ({
       style={{
         justifyContent: 'center',
         alignItems: 'center',
-        padding: '0 50px',
+        padding: '0 80px', // Safe zone: 80px horizontal margin to clear right-side buttons
         top: yPos,
         maxHeight: '25%', 
         height: 'auto',
@@ -380,10 +414,7 @@ interface WordTimestamp {
   duration: number;  // seconds
 }
 
-// ── Karaoke Caption — word-by-word gold highlight ─────────────────────────────
-// This is the #1 retention technique used by top Shorts channels.
-// Each word turns gold + bold as the narrator speaks it, then fades back.
-// A rolling window of ~8 words is always visible at the bottom of the frame.
+// ── Karaoke Caption — word-by-word gold highlight in mobile safe zone ──────────
 const KaraokeCaption: React.FC<{ wordTimestamps: WordTimestamp[]; fps: number }> = ({
   wordTimestamps,
   fps,
@@ -415,21 +446,23 @@ const KaraokeCaption: React.FC<{ wordTimestamps: WordTimestamp[]; fps: number }>
       style={{
         justifyContent: 'flex-end',
         alignItems: 'center',
-        paddingBottom: '28px',
+        paddingBottom: '210px', // Safe Zone: Above YouTube Shorts mobile title/avatar bar
+        paddingLeft: '40px',
+        paddingRight: '60px',   // Safe Zone: Clear of right-side like/comment stack
         pointerEvents: 'none',
         zIndex: 6,
       }}
     >
       <div
         style={{
-          background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 100%)',
+          background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.80) 100%)',
           borderRadius: '16px',
-          padding: '16px 28px 20px',
+          padding: '14px 24px 18px',
           display: 'flex',
           flexWrap: 'wrap',
           justifyContent: 'center',
           gap: '10px',
-          maxWidth: '95%',
+          maxWidth: '88%',
         }}
       >
         {visible.map((w, i) => {
