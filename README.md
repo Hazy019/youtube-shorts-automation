@@ -4,12 +4,13 @@
 
 [![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen.svg?style=for-the-badge)](https://github.com/Hazy019/youtube-shorts-automation)
 [![Automation](https://img.shields.io/badge/Workflow-GitHub--Actions-blueviolet.svg?style=for-the-badge)](https://github.com/Hazy019/youtube-shorts-automation/actions)
+[![Engine](https://img.shields.io/badge/Rendering-Hybrid%20(Remotion%20CLI%20%7C%20AWS%20Lambda)-00C49F.svg?style=for-the-badge)](https://www.remotion.dev/)
 [![Infrastructure](https://img.shields.io/badge/Infrastructure-AWS--Lambda%20%7C%20S3-orange.svg?style=for-the-badge)](https://aws.amazon.com/)
 [![Database](https://img.shields.io/badge/Database-Supabase--PostgreSQL-blue.svg?style=for-the-badge)](https://supabase.com/)
 
 YouTube Shorts Automation is a state-of-the-art, fully autonomous programmatic video production pipeline. It leverages multi-model generative AI, serverless cloud parallel-processing, and stateful recovery layers to syndicate high-retention video content across YouTube Shorts, TikTok, Facebook Reels, and Instagram Reels at scale. 
 
-**Cost-Effective by Design:** This system is engineered to minimize operational costs by integrating with **free APIs** wherever possible, including the Google Gemini API for script generation and Pexels/Pixabay APIs for high-quality royalty-free background assets.
+**Cost-Effective by Design:** This system is engineered with a **Hybrid Compute Engine** to minimize operational costs by integrating with free-tier APIs and offering a **$0/month Zero-Cost Cloud Mode** via GitHub Actions + Remotion CLI, while preserving full enterprise support for **AWS Lambda + S3 parallel cluster rendering**.
 
 ---
 
@@ -109,10 +110,12 @@ The system is designed for 100% hands-off reliability, featuring a two-tiered se
 The pipeline executes fully autonomously in the cloud, utilizing a secure GitHub Actions runner scheduled around global social media traffic peaks.
 
 *   **Workflows**:
-    *   **Main Factory Automation** ([factory.yml](file:///.github/workflows/factory.yml)): Triggered at **06:30 AM ET** (`30 10 * * *` UTC) and **06:30 PM ET** (`30 22 * * *` UTC) to run the main generator sequentially for channels. Supports manual override target through `SHIFT_CHANNEL` environment variables.
-    *   **Channel Metrics Reporting** ([analytics.yml](file:///.github/workflows/analytics.yml)): Regularly executes telemetry reports, collecting analytics on published video performance and pushing insights to Discord channels.
-    *   **Meta API Recovery** ([meta_recovery.yml](file:///.github/workflows/meta_recovery.yml)): Runs automated validation to self-heal and retry failed Facebook Reels and Instagram Reels postings.
-*   **Secrets Isolation**: All credentials (AWS access keys, Google Gemini keys, Supabase URLs, and YouTube OAuth Refresh Tokens) are securely loaded into the runner memory dynamically, ensuring zero repository footprint.
+    *   **Main Factory Automation** ([factory.yml](.github/workflows/factory.yml)): Triggered at **04:30 AM EDT / 08:30 UTC** (`30 8 * * *`) and **04:30 PM EDT / 20:30 UTC** (`30 20 * * *`) to provide a 2.5-hour lead buffer before the 7:00 AM / 7:00 PM EDT peak traffic slots. Bypasses top-of-the-hour runner queue contention and executes the complete pipeline sequentially for channels. Supports manual override targeting through the `SHIFT_CHANNEL` environment variable.
+    *   **Channel Metrics Reporting** ([analytics.yml](.github/workflows/analytics.yml)): Regularly executes telemetry reports, collecting analytics on published video performance and pushing insights to Discord channels.
+    *   **Meta API Recovery** ([meta_recovery.yml](.github/workflows/meta_recovery.yml)): Runs automated validation to self-heal and retry failed Facebook Reels and Instagram Reels postings.
+*   **Zero-Cost Cloud Automation**: When running with `RENDER_MODE=local` (default), rendering executes directly inside GitHub Actions on an Ubuntu runner via Remotion CLI and headless Chromium ($0/month). Your personal laptop never needs to remain on or connected.
+*   **Enterprise Scaling**: Can be instantly switched to `RENDER_MODE=cloud` to dispatch rendering across AWS Lambda clusters when high-throughput parallel rendering is desired.
+*   **Secrets Isolation**: All credentials (Google Gemini keys, Supabase URLs, Pexels keys, and YouTube OAuth tokens) are securely loaded into runner memory dynamically, ensuring zero repository footprint.
 
 ---
 
@@ -179,22 +182,26 @@ The pipeline executes fully autonomously in the cloud, utilizing a secure GitHub
 Copy or create a `.env` file in the root directory. Configure the following variables:
 
 ```ini
-# --- Core API Keys ---
-GEMINI_API_KEY="AIzaSy..."          # Google Gemini AI API key
-ELEVENLABS_API_KEY="sk_..."        # ElevenLabs key (optional fallback)
-PEXELS_API_KEY="ewNri..."          # Pexels background asset downloader
-PIXABAY_API_KEY="5580..."          # Pixabay background asset downloader
+# --- Compute Engine Configuration ---
+RENDER_MODE="local"                 # "local" (Zero-Cost via Remotion CLI) | "cloud" (AWS Lambda Cluster)
 
-# --- AWS Infrastructure ---
+# --- Core AI & Asset API Keys (Free Tier) ---
+GEMINI_API_KEY="AIzaSy..."          # Google Gemini AI API key for viral script generation
+PEXELS_API_KEY="ewNri..."          # Pexels background video asset downloader
+PIXABAY_API_KEY="5580..."          # Pixabay background asset downloader
+ELEVENLABS_API_KEY="sk_..."        # Optional fallback TTS key (Edge-TTS is primary)
+
+# --- Database & State Management ---
+SUPABASE_URL="https://..."
+SUPABASE_KEY="sb_publishable_..."  # Supabase PostgreSQL credentials
+
+# --- Enterprise AWS Infrastructure (Required only if RENDER_MODE="cloud") ---
 AWS_ACCESS_KEY_ID="AKIA..."
 AWS_SECRET_ACCESS_KEY="wRex..."
-BUCKET_NAME="remotionlambda-..."   # S3 storage bucket name
-SERVE_URL="https://..."            # Deployment URL of Remotion site bundle
-FUNCTION_NAME="remotion-render..."  # Lambda function identifier
-
-# --- Database Integration ---
-SUPABASE_URL="https://..."
-SUPABASE_KEY="sb_publishable_..."  # DB access credentials
+BUCKET_NAME="remotionlambda-..."   # AWS S3 storage bucket name (or Cloudflare R2 bucket)
+SERVE_URL="https://..."            # Deployment URL of Remotion site bundle in S3
+FUNCTION_NAME="remotion-render..."  # Remotion AWS Lambda function identifier
+# R2_ENDPOINT_URL=""               # Optional: Set for Cloudflare R2 S3-compatible storage
 
 # --- Telemetry & Notifications (Discord Webhooks) ---
 DISCORD_WEBHOOK_URL="https://..."
@@ -290,10 +297,10 @@ Use the utility scripts in the `tools/` directory to manage and test the orchest
 Trigger the full generation, render, and syndication pipeline manually using the **Hybrid Render Engine**:
 
 ```powershell
-# 1. Zero-Cost Local Mode (Renders via local CPU/GPU using Remotion CLI - $0 AWS Cost)
+# 1. Zero-Cost Engine (Default — Renders via Remotion CLI on CPU/GPU or GitHub Runner — $0 AWS Cost)
 python run_factory.py --local
 
-# 2. Cloud Serverless Mode (Renders via AWS Lambda parallel workers)
+# 2. Enterprise Cloud Serverless Mode (Dispatches parallel chunk rendering across AWS Lambda cluster)
 python run_factory.py --cloud
 ```
 
